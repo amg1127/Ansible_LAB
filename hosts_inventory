@@ -1,0 +1,14 @@
+# gateway.example.com
+192.168.254.22
+
+# servera.example.com
+172.24.0.2
+
+# serverb.example.com
+172.24.32.3
+
+# serverc.example.com
+172.24.32.4
+
+# workstation.example.com
+172.24.32.48
