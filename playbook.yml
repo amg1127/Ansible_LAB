@@ -107,6 +107,7 @@
   - name: open DNS ports in firewalld
     firewalld:
       permanent: yes
+      immediate: yes
       service: dns
       zone: public
       state: enabled
@@ -119,4 +120,12 @@
       state: started
   handlers:
   - name: restart DNS server
-    reboot:
+    service:
+      name: named-chroot-setup
+      state: restarted
+    changed_when: yes
+    notify: restart DNS server step 2
+  - name: restart DNS server step 2
+    service:
+      name: named-chroot
+      state: restarted
