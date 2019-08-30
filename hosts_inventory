@@ -1,14 +1,21 @@
-# gateway.example.com
-192.168.254.22
+---
+all:
+    children:
+        servers:
+            hosts:
+                # gateway.example.com
+                192.168.254.22:
 
-# servera.example.com
-172.24.0.2
+                # servera.example.com
+                172.24.0.2:
 
-# serverb.example.com
-172.24.32.3
+                # serverb.example.com
+                172.24.32.3:
 
-# serverc.example.com
-172.24.32.4
+                # serverc.example.com
+                172.24.32.4:
 
-# workstation.example.com
-172.24.32.48
+        workstations:
+            hosts:
+                # workstation.example.com
+                172.24.32.48:
