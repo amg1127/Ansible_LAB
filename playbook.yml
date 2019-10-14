@@ -28,6 +28,7 @@
   strategy: free
   roles:
     - dnsserver
+    - ldapserver
 
 - hosts: all
   become: yes

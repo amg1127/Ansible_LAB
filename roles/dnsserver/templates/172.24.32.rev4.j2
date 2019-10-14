@@ -1,0 +1,9 @@
+$TTL 1m
+
+@ SOA servera.{{ example_dns_name }}. root.servera.{{ example_dns_name }}. ( 2019083000 1h 10m 1w 10m )
+@ NS servera.{{ example_dns_name }}.
+
+1  PTR gateway.{{ example_dns_name }}.
+3  PTR serverb.{{ example_dns_name }}.
+4  PTR serverc.{{ example_dns_name }}.
+48 PTR workstation.{{ example_dns_name }}.

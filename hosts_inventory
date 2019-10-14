@@ -1,5 +1,8 @@
 ---
 all:
+  vars:
+    example_dns_name: "example.com"
+    example_ldap_name: "dc=example,dc=com"
   children:
     servers:
       children:

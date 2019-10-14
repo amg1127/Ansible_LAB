@@ -1,0 +1,55 @@
+---
+- name: install OpenLDAP server and Python LDAP libraries
+  yum:
+    name: "openldap-servers,openldap-clients,python-ldap"
+    state: present
+- name: ensure the OpenLDAP server is running
+  service:
+    name: slapd.service
+    enabled: yes
+    state: started
+- name: modify default root OpenLDAP database
+  ldap_attr:
+    dn: olcDatabase={2}hdb,cn=config
+    name: "{{ item.key }}"
+    values: "{{ item.value }}"
+    state: exact
+  with_dict:
+    olcSuffix: "{{ example_ldap_name }}"
+    olcRootDN: "gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+    olcAccess:
+      - >-
+        {0}to attrs=userPassword
+        by self write
+        by anonymous auth
+        by dn="cn=Manager,{{ example_ldap_name }}" write
+        by * none
+      - >-
+        {1}to dn.base="{{ example_ldap_name }}"
+        by dn="cn=Manager,{{ example_ldap_name }}" write
+        by * read
+- name: create root container
+  ldap_entry:
+    dn: "{{ example_ldap_name }}"
+    objectClass:
+      - dcObject
+      - organization
+    attributes:
+      o: "{{ example_dns_name }}"
+- name: create administrator user
+  ldap_entry:
+    dn: "cn=Manager,{{ example_ldap_name }}"
+    objectClass: person
+    attributes:
+      cn: "Manager"
+      sn: "Manager"
+      userPassword: "redhat"
+- name: create LDAP users and groups containers
+  ldap_entry:
+    dn: "ou={{ item }},{{ example_ldap_name }}"
+    objectClass: organizationalUnit
+    state: present
+  with_items:
+    - users
+    - groups
+

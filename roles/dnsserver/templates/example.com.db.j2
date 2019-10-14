@@ -1,7 +1,7 @@
 $TTL 1m
 
-@ SOA servera.example.com. root.servera.example.com. ( 2019083000 1h 10m 1w 10m )
-@ NS servera.example.com.
+@ SOA servera.{{ example_dns_name }}. root.servera.{{ example_dns_name }}. ( 2019083000 1h 10m 1w 10m )
+@ NS servera.{{ example_dns_name }}.
 
 servera A 172.24.0.2
 servera AAAA fc00:172:24:0::2

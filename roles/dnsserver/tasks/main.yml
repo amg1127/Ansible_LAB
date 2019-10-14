@@ -15,38 +15,38 @@
   - restart DNS server
 - name: write zone definition in /etc/named.conf
   blockinfile:
-    block: "{{ lookup('file', 'named.conf') }}"
+    block: "{{ lookup('file', 'named.conf') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
     insertafter: EOF
     path: /etc/named.conf
     validate: /usr/sbin/named-checkconf %s
   notify:
   - restart DNS server
 - name: write example.com zone file into /var/named/example.com.db
-  copy:
-    src: example.com.db
-    dest: /var/named/example.com.db
+  template:
+    src: example.com.db.j2
+    dest: "/var/named/{{ example_dns_name }}.db"
     owner: root
     group: named
     mode: 0640
-    validate: /usr/sbin/named-checkzone example.com. %s
+    validate: "/usr/sbin/named-checkzone '{{ example_dns_name }}.' %s"
   notify:
   - restart DNS server
 - name: write in-addr.arpa zone files into /var/named/*.rev4
-  copy:
-    src: 172.24.{{ item }}.rev4
+  template:
+    src: 172.24.{{ item }}.rev4.j2
     dest: /var/named/172.24.{{ item }}.rev4
     owner: root
     group: named
     mode: 0640
-    validate: /usr/sbin/named-checkzone {{ item }}.24.172.in-addr.arpa. %s
+    validate: "/usr/sbin/named-checkzone '{{ item }}.24.172.in-addr.arpa.' %s"
   with_items:
     -  "0"
     - "32"
   notify:
   - restart DNS server
 - name: write ip6.arpa zone files into /var/named/*.rev6
-  copy:
-    src: fc00.172.24.{{ item.number }}.rev6
+  template:
+    src: fc00.172.24.{{ item.number }}.rev6.j2
     dest: /var/named/fc00.172.24.{{ item.number }}.rev6
     owner: root
     group: named

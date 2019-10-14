@@ -1,9 +1,0 @@
-$TTL 1m
-
-@ SOA servera.example.com. root.servera.example.com. ( 2019083000 1h 10m 1w 10m )
-@ NS servera.example.com.
-
-1  PTR gateway.example.com.
-3  PTR serverb.example.com.
-4  PTR serverc.example.com.
-48 PTR workstation.example.com.
