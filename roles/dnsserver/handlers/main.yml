@@ -1,12 +1,12 @@
 ---
 - name: restart DNS server
   service:
-    name: named-chroot-setup
+    name: named-chroot-setup.service
     state: restarted
   changed_when: yes
   notify: restart DNS server step 2
 - name: restart DNS server step 2
   service:
-    name: named-chroot
+    name: named-chroot.service
     state: restarted
 

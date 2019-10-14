@@ -13,7 +13,7 @@
   become_user: root
   strategy: free
   roles:
-    - common
+    - common-step1
 
 - hosts: workstations
   become: yes
@@ -28,3 +28,11 @@
   strategy: free
   roles:
     - dnsserver
+
+- hosts: all
+  become: yes
+  become_user: root
+  strategy: free
+  roles:
+    - common-step2
+

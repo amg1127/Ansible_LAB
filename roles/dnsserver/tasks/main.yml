@@ -68,7 +68,7 @@
   - restart DNS server
 - name: ensure the DNS server is running
   service:
-    name: named-chroot
+    name: named-chroot.service
     enabled: yes
     state: started
 
