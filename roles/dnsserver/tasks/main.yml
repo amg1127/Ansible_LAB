@@ -71,4 +71,5 @@
     name: named-chroot.service
     enabled: yes
     state: started
+- meta: flush_handlers
 
