@@ -2,130 +2,29 @@
 - hosts: all
   become: yes
   become_user: root
+  gather_facts: no
   tasks:
-  - name: disable stock YUM repositories
-    ini_file:
-      dest: /etc/yum.repos.d/CentOS-Base.repo
-      section: "{{ item }}"
-      option: enabled
-      value: "0"
-    with_items:
-       - base
-       - updates
-       - extras
-       - centosplus
-  - name: enable local YUM repository
-    ini_file:
-      dest: /etc/yum.repos.d/CentOS-Media.repo
-      section: "c7-media"
-      option: enabled
-      value: "1"
+  - name: wait for all hosts to respond
+    wait_for_connection:
+      timeout: 120
+
+- hosts: all
+  become: yes
+  become_user: root
+  strategy: free
+  roles:
+    - common
 
 - hosts: workstations
   become: yes
   become_user: root
-  tasks:
-  - name: install GUI environment
-    yum:
-      name: "@^graphical-server-environment,@^gnome-desktop-environment,@graphical-admin-tools"
-      state: present
-    notify:
-    - restart workstations
-  - name: set default target to Graphical
-    file:
-      path: /etc/systemd/system/default.target
-      state: link
-      src: /lib/systemd/system/graphical.target
-    notify:
-    - restart workstations
-  handlers:
-  - name: restart workstations
-    reboot:
+  strategy: free
+  roles:
+    - workstation
 
 - hosts: servera
   become: yes
   become_user: root
-  tasks:
-  - name: install DNS Server
-    yum:
-      name: "bind,bind-utils,bind-chroot"
-      state: present
-    notify:
-    - restart DNS server
-  - name: configure DNS Server to listen to and reply from all addresses
-    replace:
-      path: /etc/named.conf
-      regexp: '^(\s*(listen-on(|-v6)\s+port\s+53|allow-query)\s*\{)[^\}]+\};\s*$'
-      replace: '\1 any; };'
-      validate: /usr/sbin/named-checkconf %s
-    notify:
-    - restart DNS server
-  - name: write zone definition in /etc/named.conf
-    blockinfile:
-      block: "{{ lookup('file', './DNS-config/named.conf') }}"
-      insertafter: EOF
-      path: /etc/named.conf
-      validate: /usr/sbin/named-checkconf %s
-    notify:
-    - restart DNS server
-  - name: write example.com zone file into /var/named/example.com.db
-    copy:
-      src: ./DNS-config/example.com.db
-      dest: /var/named/example.com.db
-      owner: root
-      group: named
-      mode: 0640
-      validate: /usr/sbin/named-checkzone example.com. %s
-    notify:
-    - restart DNS server
-  - name: write in-addr.arpa zone files into /var/named/*.rev4
-    copy:
-      src: ./DNS-config/172.24.{{ item }}.rev4
-      dest: /var/named/172.24.{{ item }}.rev4
-      owner: root
-      group: named
-      mode: 0640
-      validate: /usr/sbin/named-checkzone {{ item }}.24.172.in-addr.arpa. %s
-    with_items:
-      -  "0"
-      - "32"
-    notify:
-    - restart DNS server
-  - name: write ip6.arpa zone files into /var/named/*.rev6
-    copy:
-      src: ./DNS-config/fc00.172.24.{{ item.number }}.rev6
-      dest: /var/named/fc00.172.24.{{ item.number }}.rev6
-      owner: root
-      group: named
-      mode: 0640
-      validate: /usr/sbin/named-checkzone {{ item.subnet }}.0.0.4.2.0.0.2.7.1.0.0.0.f.c.ip6.arpa. %s
-    with_items:
-      - { subnet: "0.0", number:  "0" }
-      - { subnet: "2.3", number: "32" }
-    notify:
-    - restart DNS server
-  - name: open DNS ports in firewalld
-    firewalld:
-      permanent: yes
-      immediate: yes
-      service: dns
-      zone: public
-      state: enabled
-    notify:
-    - restart DNS server
-  - name: ensure the DNS server is running
-    service:
-      name: named-chroot
-      enabled: yes
-      state: started
-  handlers:
-  - name: restart DNS server
-    service:
-      name: named-chroot-setup
-      state: restarted
-    changed_when: yes
-    notify: restart DNS server step 2
-  - name: restart DNS server step 2
-    service:
-      name: named-chroot
-      state: restarted
+  strategy: free
+  roles:
+    - dnsserver
