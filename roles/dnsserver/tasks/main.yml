@@ -1,75 +1,78 @@
 ---
-- name: install DNS Server
-  yum:
-    name: "bind,bind-utils,bind-chroot"
-    state: present
-  notify:
-  - restart DNS server
-- name: configure DNS Server to listen to and reply from all addresses
-  replace:
-    path: /etc/named.conf
-    regexp: '^(\s*(listen-on(|-v6)\s+port\s+53|allow-query)\s*\{)[^\}]+\};\s*$'
-    replace: '\1 any; };'
-    validate: /usr/sbin/named-checkconf %s
-  notify:
-  - restart DNS server
-- name: write zone definition in /etc/named.conf
-  blockinfile:
-    block: "{{ lookup('file', 'named.conf') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
-    insertafter: EOF
-    path: /etc/named.conf
-    validate: /usr/sbin/named-checkconf %s
-  notify:
-  - restart DNS server
-- name: write example.com zone file into /var/named/example.com.db
-  template:
-    src: example.com.db.j2
-    dest: "/var/named/{{ example_dns_name }}.db"
-    owner: root
-    group: named
-    mode: 0640
-    validate: "/usr/sbin/named-checkzone '{{ example_dns_name }}.' %s"
-  notify:
-  - restart DNS server
-- name: write in-addr.arpa zone files into /var/named/*.rev4
-  template:
-    src: 172.24.{{ item }}.rev4.j2
-    dest: /var/named/172.24.{{ item }}.rev4
-    owner: root
-    group: named
-    mode: 0640
-    validate: "/usr/sbin/named-checkzone '{{ item }}.24.172.in-addr.arpa.' %s"
-  with_items:
-    -  "0"
-    - "32"
-  notify:
-  - restart DNS server
-- name: write ip6.arpa zone files into /var/named/*.rev6
-  template:
-    src: fc00.172.24.{{ item.number }}.rev6.j2
-    dest: /var/named/fc00.172.24.{{ item.number }}.rev6
-    owner: root
-    group: named
-    mode: 0640
-    validate: /usr/sbin/named-checkzone {{ item.subnet }}.0.0.4.2.0.0.2.7.1.0.0.0.f.c.ip6.arpa. %s
-  with_items:
-    - { subnet: "0.0", number:  "0" }
-    - { subnet: "2.3", number: "32" }
-  notify:
-  - restart DNS server
-- name: open DNS ports in firewalld
-  firewalld:
-    permanent: yes
-    immediate: yes
-    service: dns
-    zone: public
-    state: enabled
-  notify:
-  - restart DNS server
-- name: ensure the DNS server is running
-  service:
-    name: named-chroot.service
-    enabled: yes
-    state: started
-- meta: flush_handlers
+- name: DNS server installation and configuration
+  block:
+  - name: install DNS Server
+    yum:
+      name: "bind,bind-utils,bind-chroot"
+      state: present
+    notify:
+    - restart DNS server
+  - name: configure DNS Server to listen to and reply from all addresses
+    replace:
+      path: /etc/named.conf
+      regexp: '^(\s*(listen-on(|-v6)\s+port\s+53|allow-query)\s*\{)[^\}]+\};\s*$'
+      replace: '\1 any; };'
+      validate: /usr/sbin/named-checkconf %s
+    notify:
+    - restart DNS server
+  - name: write zone definition in /etc/named.conf
+    blockinfile:
+      block: "{{ lookup('file', 'named.conf') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
+      insertafter: EOF
+      path: /etc/named.conf
+      validate: /usr/sbin/named-checkconf %s
+    notify:
+    - restart DNS server
+  - name: write example.com zone file into /var/named/example.com.db
+    template:
+      src: example.com.db.j2
+      dest: "/var/named/{{ example_dns_name }}.db"
+      owner: root
+      group: named
+      mode: 0640
+      validate: "/usr/sbin/named-checkzone '{{ example_dns_name }}.' %s"
+    notify:
+    - restart DNS server
+  - name: write in-addr.arpa zone files into /var/named/*.rev4
+    template:
+      src: 172.24.{{ item }}.rev4.j2
+      dest: /var/named/172.24.{{ item }}.rev4
+      owner: root
+      group: named
+      mode: 0640
+      validate: "/usr/sbin/named-checkzone '{{ item }}.24.172.in-addr.arpa.' %s"
+    with_items:
+      -  "0"
+      - "32"
+    notify:
+    - restart DNS server
+  - name: write ip6.arpa zone files into /var/named/*.rev6
+    template:
+      src: fc00.172.24.{{ item.number }}.rev6.j2
+      dest: /var/named/fc00.172.24.{{ item.number }}.rev6
+      owner: root
+      group: named
+      mode: 0640
+      validate: /usr/sbin/named-checkzone {{ item.subnet }}.0.0.4.2.0.0.2.7.1.0.0.0.f.c.ip6.arpa. %s
+    with_items:
+      - { subnet: "0.0", number:  "0" }
+      - { subnet: "2.3", number: "32" }
+    notify:
+    - restart DNS server
+  - name: open DNS ports in firewalld
+    firewalld:
+      permanent: yes
+      immediate: yes
+      service: dns
+      zone: public
+      state: enabled
+    notify:
+    - restart DNS server
+  - name: ensure the DNS server is running
+    service:
+      name: named-chroot.service
+      enabled: yes
+      state: started
+  - meta: flush_handlers
+  tags: dnssetup
 

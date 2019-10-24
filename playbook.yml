@@ -29,6 +29,7 @@
   roles:
     - dnsserver
     - ldapserver
+    - krbserver
 
 - hosts: all
   become: yes

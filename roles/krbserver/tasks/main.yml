@@ -1,0 +1,113 @@
+---
+- name: Kerberos server installation and configuration
+  block:
+  - name: Install Kerberos server packages
+    yum:
+      name: "krb5-server,krb5-server-ldap"
+      state: present
+  - name: find kerberos schema file
+    command:
+      argv:
+        - find
+        - /usr/share/doc
+        - -mindepth
+        - 1
+        - -maxdepth
+        - 1
+        - -type
+        - d
+        - -name
+        - "krb5-server-ldap-*"
+    register: findout
+    changed_when: false
+    failed_when: findout.rc != 0 or "/usr/share/doc/krb5-server-ldap-" not in findout.stdout
+  - name: load needed schema
+    block:
+    - name: try loading provided LDIF file
+      command:
+        chdir: "{{ findout.stdout_lines[0] }}"
+        argv:
+          - /usr/bin/ldapadd
+          - -H
+          - ldapi:///
+          - -Y
+          - EXTERNAL
+          - -f
+          - kerberos.ldif
+      register: krb5ldapout
+      changed_when: krb5ldapout.rc != 80
+      failed_when: krb5ldapout.rc != 0 and krb5ldapout.rc != 80
+    rescue:
+    - name: test whether 'ldapadd' error has been caused by an malformed schema LDIF file
+      assert:
+        that: krb5ldapout.rc == 21
+    - name: regenerate kerberos schema file
+      block:
+      - name: create temporary file
+        tempfile:
+          state: file
+          suffix: _slapd.conf
+        register: slapdtempfile
+        changed_when: false
+      - name: create temporary directory
+        tempfile:
+          state: directory
+          suffix: _slapd.d
+        register: slapdtempdir
+        changed_when: false
+      - name: create temporary slapd.conf
+        copy:
+          content: "include {{ findout.stdout_lines[0] }}/kerberos.schema"
+          dest: "{{ slapdtempfile.path }}"
+        changed_when: false
+      - name: write temporary kerberos schema LDIF file
+        command:
+          argv:
+            - slaptest
+            - -f
+            - "{{ slapdtempfile.path }}"
+            - -F
+            - "{{ slapdtempdir.path }}"
+        register: slaptestout
+        changed_when: false
+        failed_when: slaptestout.rc != 0
+      - name: modify temporary kerberos schema LDIF file
+        replace:
+          path: "{{ slapdtempdir.path }}/cn=config/cn=schema/cn={0}kerberos.ldif"
+          regexp: "{{ item.pattern }}"
+          replace: "{{ item.replacement }}"
+        with_items:
+          - { pattern: '(?i)^dn:\s+cn=\{0\}kerberos\s*$', replacement: 'dn: cn=kerberos,cn=schema,cn=config' }
+          - { pattern: '(?i)^cn:\s+\{0\}kerberos\s*$', replacement: 'cn: kerberos' }
+        changed_when: false
+      - name: remove unwanted lines from temporary kerberos schema file
+        # https://community.cloudera.com/t5/Community-Articles/Configuring-Kerberos-with-OpenLDAP-back-end/ta-p/248584
+        lineinfile:
+          path: "{{ slapdtempdir.path }}/cn=config/cn=schema/cn={0}kerberos.ldif"
+          regexp: '(?i)^{{ item }}:'
+          state: absent
+        with_items:
+          - structuralObjectClass
+          - entryUUID
+          - creatorsName
+          - createTimeStamp
+          - entryCSN
+          - modifiersName
+          - modifyTimestamp
+        changed_when: false
+      - name: try loading temporary kerberos schema LDIF file
+        command:
+          chdir: "{{ slapdtempdir.path }}/cn=config/cn=schema"
+          argv:
+            - /usr/bin/ldapadd
+            - -H
+            - ldapi:///
+            - -Y
+            - EXTERNAL
+            - -f
+            - "cn={0}kerberos.ldif"
+        register: krb5ldapout2
+        changed_when: krb5ldapout2.rc != 80
+        failed_when: krb5ldapout2.rc != 0 and krb5ldapout2.rc != 80
+  tags: krbsetup
+

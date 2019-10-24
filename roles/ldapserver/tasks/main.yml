@@ -1,103 +1,106 @@
 ---
-- name: install OpenLDAP client, server and Python LDAP libraries
-  yum:
-    name: "openldap-servers,openldap-clients,python-ldap"
-    state: present
-- name: ensure the OpenLDAP server is running
-  service:
-    name: slapd.service
-    enabled: yes
-    state: started
-- name: load needed schemas
-  command:
-    chdir: /etc/openldap/schema
-    argv:
-      - /usr/bin/ldapadd
-      - -H
-      - ldapi:///
-      - -Y
-      - EXTERNAL
-      - -f
-      - "{{ item }}.ldif"
-  register: ldapaddout
-  changed_when: ldapaddout.rc != 80
-  failed_when: ldapaddout.rc != 0 and ldapaddout.rc != 80
-  with_items:
-    - core
-    - cosine
-    - nis
-- name: modify default root OpenLDAP database
-  ldap_attr:
-    dn: olcDatabase={2}hdb,cn=config
-    name: "{{ item.key }}"
-    values: "{{ item.value }}"
-    state: exact
-  with_dict:
-    olcSuffix: "{{ example_ldap_name }}"
-    olcRootDN: "gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
-    olcAccess:
-      - >-
-        {0}to attrs=userPassword
-        by self write
-        by anonymous auth
-        by dn="cn=Manager,{{ example_ldap_name }}" write
-        by * none
-      - >-
-        {1}to dn.base="{{ example_ldap_name }}"
-        by dn="cn=Manager,{{ example_ldap_name }}" write
-        by * read
-- name: create root container
-  ldap_entry:
-    dn: "{{ example_ldap_name }}"
-    objectClass:
-      - dcObject
-      - organization
-    attributes:
-      o: "{{ example_dns_name }}"
-    state: present
-- name: create administrator user
-  ldap_entry:
-    dn: "cn=Manager,{{ example_ldap_name }}"
-    objectClass: person
-    attributes:
-      cn: "Manager"
-      sn: "Manager"
-      userPassword: "redhat"
-    state: present
-- name: create LDAP users and groups containers
-  ldap_entry:
-    dn: "ou={{ item }},{{ example_ldap_name }}"
-    objectClass: organizationalUnit
-    state: present
-  with_items:
-    - users
-    - groups
-- name: create LDAP groups
-  ldap_entry:
-    dn: "cn={{ item.1 }},ou=groups,{{ example_ldap_name }}"
-    objectClass: posixGroup
-    attributes:
-      cn: "{{ item.1 }}"
-      gidNumber: "{{ item.0 + 10000 }}"
-    state: present
-  with_indexed_items:
-    - "{{ NATOalphabet }}"
-- name: create LDAP users
-  ldap_entry:
-    dn: "uid={{ item.1 }},ou=users,{{ example_ldap_name }}"
-    objectClass:
-      - posixAccount
-      - person
-    attributes:
-      uid: "{{ item.1 }}"
-      cn: "{{ item.1 }}"
-      sn: "{{ item.1 }}"
-      uidNumber: "{{ item.0 + 10000 }}"
-      gidNumber: "{{ item.0 + 10000 }}"
-      loginShell: "/bin/bash"
-      homeDirectory: "/home/{{ item.1 }}"
-      userPassword: "pw{{ item.1 }}"
-    state: present
-  with_indexed_items:
-    - "{{ NATOalphabet }}"
+- name: LDAP server installation and configuration
+  block:
+  - name: install OpenLDAP client, server and Python LDAP libraries
+    yum:
+      name: "openldap-servers,openldap-clients,python-ldap"
+      state: present
+  - name: ensure the OpenLDAP server is running
+    service:
+      name: slapd.service
+      enabled: yes
+      state: started
+  - name: load needed schemas
+    command:
+      chdir: /etc/openldap/schema
+      argv:
+        - /usr/bin/ldapadd
+        - -H
+        - ldapi:///
+        - -Y
+        - EXTERNAL
+        - -f
+        - "{{ item }}.ldif"
+    register: ldapaddout
+    changed_when: ldapaddout.rc != 80
+    failed_when: ldapaddout.rc != 0 and ldapaddout.rc != 80
+    with_items:
+      - core
+      - cosine
+      - nis
+  - name: modify default root OpenLDAP database
+    ldap_attr:
+      dn: olcDatabase={2}hdb,cn=config
+      name: "{{ item.key }}"
+      values: "{{ item.value }}"
+      state: exact
+    with_dict:
+      olcSuffix: "{{ example_ldap_name }}"
+      olcRootDN: "gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+      olcAccess:
+        - >-
+          {0}to attrs=userPassword
+          by self write
+          by anonymous auth
+          by dn="cn=Manager,{{ example_ldap_name }}" write
+          by * none
+        - >-
+          {1}to dn.base="{{ example_ldap_name }}"
+          by dn="cn=Manager,{{ example_ldap_name }}" write
+          by * read
+  - name: create root container
+    ldap_entry:
+      dn: "{{ example_ldap_name }}"
+      objectClass:
+        - dcObject
+        - organization
+      attributes:
+        o: "{{ example_dns_name }}"
+      state: present
+  - name: create administrator user
+    ldap_entry:
+      dn: "cn=Manager,{{ example_ldap_name }}"
+      objectClass: person
+      attributes:
+        cn: "Manager"
+        sn: "Manager"
+        userPassword: "redhat"
+      state: present
+  - name: create LDAP users and groups containers
+    ldap_entry:
+      dn: "ou={{ item }},{{ example_ldap_name }}"
+      objectClass: organizationalUnit
+      state: present
+    with_items:
+      - users
+      - groups
+  - name: create LDAP groups
+    ldap_entry:
+      dn: "cn={{ item.1 }},ou=groups,{{ example_ldap_name }}"
+      objectClass: posixGroup
+      attributes:
+        cn: "{{ item.1 }}"
+        gidNumber: "{{ item.0 + 10000 }}"
+      state: present
+    with_indexed_items:
+      - "{{ NATOalphabet }}"
+  - name: create LDAP users
+    ldap_entry:
+      dn: "uid={{ item.1 }},ou=users,{{ example_ldap_name }}"
+      objectClass:
+        - posixAccount
+        - person
+      attributes:
+        uid: "{{ item.1 }}"
+        cn: "{{ item.1 }}"
+        sn: "{{ item.1 }}"
+        uidNumber: "{{ item.0 + 10000 }}"
+        gidNumber: "{{ item.0 + 10000 }}"
+        loginShell: "/bin/bash"
+        homeDirectory: "/home/{{ item.1 }}"
+        userPassword: "pw{{ item.1 }}"
+      state: present
+    with_indexed_items:
+      - "{{ NATOalphabet }}"
+  tags: ldapsetup
 
