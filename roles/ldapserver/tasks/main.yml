@@ -1,6 +1,8 @@
 ---
 - name: LDAP server installation and configuration
   block:
+  - name: load passwords from vault file
+    include_vars: vaultfile.yml
   - name: install OpenLDAP client, server and Python LDAP libraries
     yum:
       name: "openldap-servers,openldap-clients,python-ldap"
@@ -64,7 +66,7 @@
       attributes:
         cn: "Manager"
         sn: "Manager"
-        userPassword: "redhat"
+        userPassword: "{{ LDAPManagerPassword }}"
       state: present
   - name: create LDAP users and groups containers
     ldap_entry:
@@ -98,7 +100,7 @@
         gidNumber: "{{ item.0 + 10000 }}"
         loginShell: "/bin/bash"
         homeDirectory: "/home/{{ item.1 }}"
-        userPassword: "pw{{ item.1 }}"
+        userPassword: "{{ LDAPUserPassword }}"
       state: present
     with_indexed_items:
       - "{{ NATOalphabet }}"
