@@ -1,6 +1,8 @@
 ---
 - name: Kerberos server installation and configuration
   block:
+  - name: load passwords from vault file
+    include_vars: vaultfile.yml
   - name: Install Kerberos server packages
     yum:
       name: "krb5-server,krb5-server-ldap"
@@ -109,5 +111,39 @@
         register: krb5ldapout2
         changed_when: krb5ldapout2.rc != 80
         failed_when: krb5ldapout2.rc != 0 and krb5ldapout2.rc != 80
+  - name: create LDAP users for krb5kdc and kadmind
+    ldap_entry:
+      dn: "cn={{ item.user }},{{ example_ldap_name }}"
+      objectClass: person
+      attributes:
+        cn: "{{ item.user }}"
+        sn: "{{ item.user }}"
+        userPassword: "{{ item.password }}"
+      state: present
+    with_items:
+      - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
+      - { user: "kadmind", password: "{{ kadmindPassword }}" }
+  - name: modify default OpenLDAP database permissions
+    ldap_attr:
+      dn: olcDatabase={2}hdb,cn=config
+      name: "{{ item.key }}"
+      values: "{{ item.value }}"
+      state: present
+    with_dict:
+      olcAccess:
+        - >-
+          {2}to dn.subtree="cn={{ example_dns_name | upper }},cn=krbcontainer,{{ example_ldap_name }}"
+          by anonymous auth
+          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn=krb5kdc,{{ example_ldap_name }}" write
+          by dn.exact="cn=kadmind,{{ example_ldap_name }}" write
+          by * none
+        - >-
+          {3}to dn.subtree="ou=users,{{ example_ldap_name }}"
+          by anonymous auth
+          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn=krb5kdc,{{ example_ldap_name }}" write
+          by dn.exact="cn=kadmind,{{ example_ldap_name }}" write
+          by * read
   tags: krbsetup
 

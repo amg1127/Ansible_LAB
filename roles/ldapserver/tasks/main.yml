@@ -44,11 +44,21 @@
           {0}to attrs=userPassword
           by self write
           by anonymous auth
-          by dn="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
           by * none
         - >-
-          {1}to dn.base="{{ example_ldap_name }}"
-          by dn="cn=Manager,{{ example_ldap_name }}" write
+          {1}to attrs=shadowLastChange
+          by self write
+          by anonymous auth
+          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by * read
+        - >-
+          {2}to dn.subtree="{{ example_ldap_name }}"
+          by anonymous auth
+          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by * read
+        - >-
+          {3}to *
           by * read
   - name: create root container
     ldap_entry:
