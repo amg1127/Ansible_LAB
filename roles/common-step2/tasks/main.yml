@@ -48,8 +48,4 @@
       section: epel
       option: enabled
       value: "0"
-- name: Install Kerberos client packages
-  yum:
-    name: "krb5-workstation"
-    state: present
 

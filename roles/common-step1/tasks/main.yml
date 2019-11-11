@@ -16,4 +16,16 @@
     section: "c7-media"
     option: enabled
     value: "1"
+- name: Install Kerberos client packages
+  yum:
+    name: "krb5-workstation"
+    state: present
+- name: deploy krb5.conf file
+  template:
+    dest: "/etc/krb5.conf.d/{{ example_dns_name }}.krb5.conf"
+    force: yes
+    group: root
+    mode: "0644"
+    owner: root
+    src: krb5.conf.j2
 

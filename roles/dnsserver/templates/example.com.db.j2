@@ -6,6 +6,14 @@ $TTL 1m
 servera A 172.24.0.2
 servera AAAA fc00:172:24:0::2
 
+; DNS records for kerberos
+kerberos              CNAME servera
+_kerberos             TXT "{{ example_dns_name | upper }}"
+_kerberos._udp        SRV 0 0 88 kerberos
+_kerberos-master._udp SRV 0 0 88 kerberos
+_kerberos-adm._tcp    SRV 0 0 749 kerberos
+_kpasswd._udp         SRV 0 0 464 kerberos
+
 gateway A 172.24.0.1
 gateway A 172.24.32.1
 gateway AAAA fc00:172:24:0::1

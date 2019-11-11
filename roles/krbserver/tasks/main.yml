@@ -1,6 +1,10 @@
 ---
 - name: Kerberos server installation and configuration
   block:
+  - name: load passwords from LDAP role vault file
+    include_vars: roles/ldapserver/vars/vaultfile.yml
+  - name: load variables from LDAP role main file
+    include_vars: roles/ldapserver/vars/main.yml
   - name: load passwords from vault file
     include_vars: vaultfile.yml
   - name: Install Kerberos server packages
@@ -40,7 +44,7 @@
       changed_when: krb5ldapout.rc != 80
       failed_when: krb5ldapout.rc != 0 and krb5ldapout.rc != 80
     rescue:
-    - name: test whether 'ldapadd' error has been caused by an malformed schema LDIF file
+    - name: Ensure that 'ldapadd' error has been caused by an malformed schema LDIF file
       assert:
         that: krb5ldapout.rc == 21
     - name: regenerate kerberos schema file
@@ -123,7 +127,7 @@
     with_items:
       - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
       - { user: "kadmind", password: "{{ kadmindPassword }}" }
-  - name: modify default OpenLDAP database permissions
+  - name: modify default OpenLDAP database (permissions and indexes)
     ldap_attr:
       dn: olcDatabase={2}hdb,cn=config
       name: "{{ item.key }}"
@@ -145,5 +149,84 @@
           by dn.exact="cn=krb5kdc,{{ example_ldap_name }}" write
           by dn.exact="cn=kadmind,{{ example_ldap_name }}" write
           by * read
+      olcDbIndex: "krbPrincipalName eq,pres"
+  - name: deploy kdc.conf file
+    template:
+      backup: yes
+      dest: "{{ krb5kdc_rootdir }}/kdc.conf"
+      force: yes
+      group: root
+      mode: "0600"
+      owner: root
+      src: kdc.conf.j2
+    notify:
+      - restart KDC service
+      - restart KADMIN service
+  - name: create password file that will store LDAP credentials for kerberos
+    command:
+      argv:
+        - /usr/sbin/kdb5_ldap_util
+        - stashsrvpw
+        - -f
+        - "{{ krb5kdc_rootdir }}/ldap_srvpw"
+        - "cn={{ item.user }},{{ example_ldap_name }}"
+      stdin: "{{ item.password }}\n{{ item.password }}\n"
+    with_items:
+      - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
+      - { user: "kadmind", password: "{{ kadmindPassword }}" }
+    register: kdb5_ldap_output
+    changed_when: false
+    failed_when: kdb5_ldap_output.rc != 0
+  - name: Create the realm using kdb5_ldap_util if it does not exist
+    block:
+      - name: Check whether Kerberos realm exists within LDAP tree
+        command:
+          argv:
+            - /usr/sbin/kdb5_ldap_util
+            - view
+            - -r
+            - "{{ example_dns_name | upper }}"
+        register: kdb5_ldap_output2
+        changed_when: false
+        failed_when: kdb5_ldap_output2.rc != 0
+    rescue:
+      - name: Ensure that 'kdb5_ldap_util' error has been caused by object absence
+        assert:
+          that: kdb5_ldap_output2.stderr | regex_search('(?i)^(.*[:\s])?no\s+such\s+object\s+')
+      - name: Create Kerberos realm within LDAP tree
+        command:
+          argv:
+            - /usr/sbin/kdb5_ldap_util
+            - create
+            - -subtrees
+            - "ou=users,{{ example_ldap_name }}"
+            - -sscope
+            - SUB
+            - -r
+            - "{{ example_dns_name | upper }}"
+            - -D
+            - "cn=Manager,{{ example_ldap_name }}"
+            - -s
+          stdin: "{{ LDAPManagerPassword }}\n{{ krb5kdcMasterKey }}\n{{ krb5kdcMasterKey }}\n"
+        register: kdb5_ldap_output3
+        changed_when: true
+        failed_when: kdb5_ldap_output3.rc != 0
+        notify:
+          - restart KDC service
+          - restart KADMIN service
+# I am in a need of a better strategy here...
+  - name: Add kerberos attributes to existing LDAP users
+    command:
+      argv:
+        - /usr/sbin/kadmin.local
+        - addprinc
+        - -x
+        - "dn=uid={{ item }},ou=users,{{ example_ldap_name }}"
+        - "{{ item }}@{{ example_dns_name | upper }}"
+      stdin: "{{ LDAPUserPassword }}\n{{ LDAPUserPassword }}\n"
+    register: kadminlocal_output
+    changed_when: kadminlocal_output.rc == 0
+    failed_when: kadminlocal_output.rc != 0 and kadminlocal_output.stderr is not match('(?i)principal\s+(|.*\s+)already\s+exists\s+')
+    with_items: "{{ NATOalphabet }}"
   tags: krbsetup
 

@@ -17,7 +17,7 @@
     - restart DNS server
   - name: write zone definition in /etc/named.conf
     blockinfile:
-      block: "{{ lookup('file', 'named.conf') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
+      block: "{{ lookup('file', 'named.conf.snippet') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
       insertafter: EOF
       path: /etc/named.conf
       validate: /usr/sbin/named-checkconf %s

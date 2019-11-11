@@ -14,6 +14,7 @@ all:
           hosts:
             # servera.example.com
             172.24.0.2:
+              krb5kdc_rootdir: "/var/kerberos/krb5kdc"
         serverb:
           hosts:
             # serverb.example.com
