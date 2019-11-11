@@ -214,6 +214,17 @@
         notify:
           - restart KDC service
           - restart KADMIN service
+  - name: open Kerberos ports in firewalld
+    firewalld:
+      permanent: yes
+      immediate: yes
+      service: "{{ item }}"
+      zone: public
+      state: enabled
+    with_items:
+      - kerberos
+      - kpasswd
+      - kadmin
 # I am in a need of a better strategy here...
   - name: Add kerberos attributes to existing LDAP users
     command:

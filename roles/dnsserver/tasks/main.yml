@@ -66,8 +66,6 @@
       service: dns
       zone: public
       state: enabled
-    notify:
-    - restart DNS server
   - name: ensure the DNS server is running
     service:
       name: named-chroot.service
