@@ -127,6 +127,9 @@
     with_items:
       - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
       - { user: "kadmind", password: "{{ kadmindPassword }}" }
+    notify:
+    - restart KDC service
+    - restart KADMIN service
   - name: modify default OpenLDAP database (permissions and indexes)
     ldap_attr:
       dn: olcDatabase={2}hdb,cn=config
@@ -160,8 +163,8 @@
       owner: root
       src: kdc.conf.j2
     notify:
-      - restart KDC service
-      - restart KADMIN service
+    - restart KDC service
+    - restart KADMIN service
   - name: create password file that will store LDAP credentials for kerberos
     command:
       argv:
@@ -212,8 +215,8 @@
         changed_when: true
         failed_when: kdb5_ldap_output3.rc != 0
         notify:
-          - restart KDC service
-          - restart KADMIN service
+        - restart KDC service
+        - restart KADMIN service
   - name: open Kerberos ports in firewalld
     firewalld:
       permanent: yes
@@ -225,19 +228,37 @@
       - kerberos
       - kpasswd
       - kadmin
-# I am in a need of a better strategy here...
+  - name: ensure Kerberos service is running
+    service:
+      name: "{{ item }}.service"
+      enabled: yes
+      state: started
+    with_items:
+      - krb5kdc
+      - kadmin
+# The fine art of workaround...
   - name: Add kerberos attributes to existing LDAP users
     command:
       argv:
-        - /usr/sbin/kadmin.local
-        - addprinc
-        - -x
-        - "dn=uid={{ item }},ou=users,{{ example_ldap_name }}"
+        - /bin/bash
+        - -c
+        - >-
+          principal="${1}";
+          ldapdn="${2}";
+          if /usr/sbin/kadmin.local getprinc "${principal}" > /dev/null; then
+            echo "PRINCIPAL ALREADY EXISTS";
+          elif /usr/sbin/kadmin.local addprinc -x "dn=${ldapdn}" "${principal}"; then
+            echo "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY";
+          else
+            exit 1;
+          fi
+        - ansible
         - "{{ item }}@{{ example_dns_name | upper }}"
+        - "uid={{ item }},ou=users,{{ example_ldap_name }}"
       stdin: "{{ LDAPUserPassword }}\n{{ LDAPUserPassword }}\n"
     register: kadminlocal_output
-    changed_when: kadminlocal_output.rc == 0
-    failed_when: kadminlocal_output.rc != 0 and kadminlocal_output.stderr is not match('(?i)principal\s+(|.*\s+)already\s+exists\s+')
+    changed_when: kadminlocal_output.rc == 0 and "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY" in kadminlocal_output.stdout
+    failed_when: kadminlocal_output.rc != 0
     with_items: "{{ NATOalphabet }}"
   tags: krbsetup
 
