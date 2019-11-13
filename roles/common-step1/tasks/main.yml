@@ -1,5 +1,5 @@
 ---
-- name: disable stock YUM repositories
+- name: Disable stock YUM repositories
   ini_file:
     dest: /etc/yum.repos.d/CentOS-Base.repo
     section: "{{ item }}"
@@ -10,7 +10,7 @@
     - updates
     - extras
     - centosplus
-- name: enable local YUM repository
+- name: Enable local YUM repository
   ini_file:
     dest: /etc/yum.repos.d/CentOS-Media.repo
     section: "c7-media"
@@ -20,7 +20,7 @@
   yum:
     name: "krb5-workstation"
     state: present
-- name: deploy krb5.conf file
+- name: Deploy krb5.conf file
   template:
     dest: "/etc/krb5.conf.d/{{ example_dns_name }}.krb5.conf"
     force: yes

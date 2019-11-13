@@ -1,10 +1,17 @@
 ---
-- name: restart KDC service
+- name: Restart KDC service
   service:
     name: krb5kdc.service
     state: restarted
-- name: restart KADMIN service
+- name: Restart KADMIN service
   service:
     name: kadmin.service
     state: restarted
+- name: Restart OpenLDAP service
+  service:
+    name: slapd.service
+    state: restarted
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
 

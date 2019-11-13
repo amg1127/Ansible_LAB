@@ -1,4 +1,4 @@
 ---
-- name: restart workstations
+- name: Restart workstations
   reboot:
 

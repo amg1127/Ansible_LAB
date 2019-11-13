@@ -18,8 +18,8 @@
 [dbmodules]
  {{ example_dns_name | upper }} = {
   db_library = kldap
-  ldap_kdc_dn = cn=krb5kdc,{{ example_ldap_name }}
-  ldap_kadmind_dn = cn=kadmind,{{ example_ldap_name }}
+  ldap_kdc_dn = cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}
+  ldap_kadmind_dn = cn={{ kadmindLDAPUserName }},{{ example_ldap_name }}
   ldap_service_password_file = {{ krb5kdc_rootdir }}/ldap_srvpw
 }
 

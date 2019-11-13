@@ -1,15 +1,15 @@
 ---
-- name: install GUI environment
+- name: Install GUI environment
   yum:
     name: "@^graphical-server-environment,@^gnome-desktop-environment,@graphical-admin-tools"
     state: present
   notify:
-  - restart workstations
-- name: set default target to Graphical
+  - Restart workstations
+- name: Set default target to Graphical
   file:
     path: /etc/systemd/system/default.target
     state: link
     src: /lib/systemd/system/graphical.target
   notify:
-  - restart workstations
+  - Restart workstations
 

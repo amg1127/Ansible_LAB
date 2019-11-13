@@ -1,17 +1,21 @@
 ---
 - name: Kerberos server installation and configuration
   block:
-  - name: load passwords from LDAP role vault file
+  - name: Load passwords from LDAP role vault file
     include_vars: roles/ldapserver/vars/vaultfile.yml
-  - name: load variables from LDAP role main file
+  - name: Load variables from LDAP role main file
     include_vars: roles/ldapserver/vars/main.yml
-  - name: load passwords from vault file
+  - name: Load passwords from vault file
     include_vars: vaultfile.yml
   - name: Install Kerberos server packages
     yum:
       name: "krb5-server,krb5-server-ldap"
       state: present
-  - name: find kerberos schema file
+  - name: Install Cyrus SASL libraries
+    yum:
+      name: "cyrus-sasl-gssapi,cyrus-sasl-plain"
+      state: present
+  - name: Find kerberos schema file
     command:
       argv:
         - find
@@ -27,9 +31,9 @@
     register: findout
     changed_when: false
     failed_when: findout.rc != 0 or "/usr/share/doc/krb5-server-ldap-" not in findout.stdout
-  - name: load needed schema
+  - name: Load needed schema
     block:
-    - name: try loading provided LDIF file
+    - name: Try loading provided LDIF file
       command:
         chdir: "{{ findout.stdout_lines[0] }}"
         argv:
@@ -47,26 +51,27 @@
     - name: Ensure that 'ldapadd' error has been caused by an malformed schema LDIF file
       assert:
         that: krb5ldapout.rc == 21
-    - name: regenerate kerberos schema file
+    - name: Regenerate kerberos schema file
       block:
-      - name: create temporary file
+      - name: Create temporary file
         tempfile:
           state: file
           suffix: _slapd.conf
         register: slapdtempfile
         changed_when: false
-      - name: create temporary directory
+      - name: Create temporary directory
         tempfile:
           state: directory
           suffix: _slapd.d
         register: slapdtempdir
         changed_when: false
-      - name: create temporary slapd.conf
+      - name: Create temporary slapd.conf
         copy:
           content: "include {{ findout.stdout_lines[0] }}/kerberos.schema"
           dest: "{{ slapdtempfile.path }}"
+          checksum: "{{ ('include ' ~ findout.stdout_lines[0] ~ '/kerberos.schema') | hash('sha1') }}"
         changed_when: false
-      - name: write temporary kerberos schema LDIF file
+      - name: Write temporary kerberos schema LDIF file
         command:
           argv:
             - slaptest
@@ -77,7 +82,7 @@
         register: slaptestout
         changed_when: false
         failed_when: slaptestout.rc != 0
-      - name: modify temporary kerberos schema LDIF file
+      - name: Modify temporary kerberos schema LDIF file
         replace:
           path: "{{ slapdtempdir.path }}/cn=config/cn=schema/cn={0}kerberos.ldif"
           regexp: "{{ item.pattern }}"
@@ -86,7 +91,7 @@
           - { pattern: '(?i)^dn:\s+cn=\{0\}kerberos\s*$', replacement: 'dn: cn=kerberos,cn=schema,cn=config' }
           - { pattern: '(?i)^cn:\s+\{0\}kerberos\s*$', replacement: 'cn: kerberos' }
         changed_when: false
-      - name: remove unwanted lines from temporary kerberos schema file
+      - name: Remove unwanted lines from temporary kerberos schema file
         # https://community.cloudera.com/t5/Community-Articles/Configuring-Kerberos-with-OpenLDAP-back-end/ta-p/248584
         lineinfile:
           path: "{{ slapdtempdir.path }}/cn=config/cn=schema/cn={0}kerberos.ldif"
@@ -101,7 +106,7 @@
           - modifiersName
           - modifyTimestamp
         changed_when: false
-      - name: try loading temporary kerberos schema LDIF file
+      - name: Try loading temporary kerberos schema LDIF file
         command:
           chdir: "{{ slapdtempdir.path }}/cn=config/cn=schema"
           argv:
@@ -115,7 +120,7 @@
         register: krb5ldapout2
         changed_when: krb5ldapout2.rc != 80
         failed_when: krb5ldapout2.rc != 0 and krb5ldapout2.rc != 80
-  - name: create LDAP users for krb5kdc and kadmind
+  - name: Create LDAP users for krb5kdc and kadmind
     ldap_entry:
       dn: "cn={{ item.user }},{{ example_ldap_name }}"
       objectClass: person
@@ -125,12 +130,13 @@
         userPassword: "{{ item.password }}"
       state: present
     with_items:
-      - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
-      - { user: "kadmind", password: "{{ kadmindPassword }}" }
+      - { user: "{{ krb5kdcLDAPUserName }}", password: "{{ krb5kdcLDAPPassword }}" }
+      - { user: "{{ kadmindLDAPUserName }}", password: "{{ kadmindLDAPPassword }}" }
+    no_log: yes
     notify:
-    - restart KDC service
-    - restart KADMIN service
-  - name: modify default OpenLDAP database (permissions and indexes)
+    - Restart KDC service
+    - Restart KADMIN service
+  - name: Modify default OpenLDAP database (permissions and indexes)
     ldap_attr:
       dn: olcDatabase={2}hdb,cn=config
       name: "{{ item.key }}"
@@ -141,19 +147,19 @@
         - >-
           {2}to dn.subtree="cn={{ example_dns_name | upper }},cn=krbcontainer,{{ example_ldap_name }}"
           by anonymous auth
-          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
-          by dn.exact="cn=krb5kdc,{{ example_ldap_name }}" write
-          by dn.exact="cn=kadmind,{{ example_ldap_name }}" write
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ kadmindLDAPUserName }},{{ example_ldap_name }}" write
           by * none
         - >-
-          {3}to dn.subtree="ou=users,{{ example_ldap_name }}"
+          {3}to dn.subtree="{{ LDAPUsersContainer }},{{ example_ldap_name }}"
           by anonymous auth
-          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
-          by dn.exact="cn=krb5kdc,{{ example_ldap_name }}" write
-          by dn.exact="cn=kadmind,{{ example_ldap_name }}" write
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ kadmindLDAPUserName }},{{ example_ldap_name }}" write
           by * read
       olcDbIndex: "krbPrincipalName eq,pres"
-  - name: deploy kdc.conf file
+  - name: Deploy kdc.conf file
     template:
       backup: yes
       dest: "{{ krb5kdc_rootdir }}/kdc.conf"
@@ -163,9 +169,9 @@
       owner: root
       src: kdc.conf.j2
     notify:
-    - restart KDC service
-    - restart KADMIN service
-  - name: create password file that will store LDAP credentials for kerberos
+    - Restart KDC service
+    - Restart KADMIN service
+  - name: Create password file that will store LDAP credentials for kerberos
     command:
       argv:
         - /usr/sbin/kdb5_ldap_util
@@ -175,11 +181,12 @@
         - "cn={{ item.user }},{{ example_ldap_name }}"
       stdin: "{{ item.password }}\n{{ item.password }}\n"
     with_items:
-      - { user: "krb5kdc", password: "{{ krb5kdcPassword }}" }
-      - { user: "kadmind", password: "{{ kadmindPassword }}" }
+      - { user: "{{ krb5kdcLDAPUserName }}", password: "{{ krb5kdcLDAPPassword }}" }
+      - { user: "{{ kadmindLDAPUserName }}", password: "{{ kadmindLDAPPassword }}" }
     register: kdb5_ldap_output
     changed_when: false
     failed_when: kdb5_ldap_output.rc != 0
+    no_log: yes
   - name: Create the realm using kdb5_ldap_util if it does not exist
     block:
       - name: Check whether Kerberos realm exists within LDAP tree
@@ -202,22 +209,34 @@
             - /usr/sbin/kdb5_ldap_util
             - create
             - -subtrees
-            - "ou=users,{{ example_ldap_name }}"
+            - "{{ LDAPUsersContainer }},{{ example_ldap_name }}"
             - -sscope
             - SUB
             - -r
             - "{{ example_dns_name | upper }}"
             - -D
-            - "cn=Manager,{{ example_ldap_name }}"
+            - "cn={{ LDAPAdminUserName }},{{ example_ldap_name }}"
             - -s
-          stdin: "{{ LDAPManagerPassword }}\n{{ krb5kdcMasterKey }}\n{{ krb5kdcMasterKey }}\n"
+          stdin: "{{ LDAPAdminPassword }}\n{{ krb5kdcMasterKey }}\n{{ krb5kdcMasterKey }}\n"
         register: kdb5_ldap_output3
         changed_when: true
         failed_when: kdb5_ldap_output3.rc != 0
+        no_log: yes
         notify:
-        - restart KDC service
-        - restart KADMIN service
-  - name: open Kerberos ports in firewalld
+        - Restart KDC service
+        - Restart KADMIN service
+      - name: Set Kerberos administrator password
+        command:
+          argv:
+            - /usr/sbin/kadmin.local
+            - cpw
+            - "kadmin/admin@{{ example_dns_name | upper }}"
+          stdin: "{{ krb5adminPassword }}\n{{ krb5adminPassword }}\n"
+        register: kadminpwd_output
+        changed_when: true
+        failed_when: kadminpwd_output.rc != 0
+        no_log: yes
+  - name: Open Kerberos ports in firewalld
     firewalld:
       permanent: yes
       immediate: yes
@@ -228,7 +247,7 @@
       - kerberos
       - kpasswd
       - kadmin
-  - name: ensure Kerberos service is running
+  - name: Ensure Kerberos service is running
     service:
       name: "{{ item }}.service"
       enabled: yes
@@ -236,29 +255,69 @@
     with_items:
       - krb5kdc
       - kadmin
-# The fine art of workaround...
+  - name: Create systemd extension directories
+    file:
+      path: "/etc/systemd/system/{{ item }}.service.d"
+      state: directory
+      owner: root
+      group: root
+      mode: "0755"
+    with_items:
+      - krb5kdc
+      - kadmin
+  - name: Ensure that Kerberos services start after LDAP service
+    copy:
+      content: |
+        [Unit]
+        Requires=slapd.service
+        After=slapd.service
+      dest: "/etc/systemd/system/{{ item }}.service.d/{{ item }}-after-slapd.conf"
+      mode: "0644"
+      owner: root
+      group: root
+    with_items:
+      - krb5kdc
+      - kadmin
+    notify: Reload systemd configuration
   - name: Add kerberos attributes to existing LDAP users
-    command:
-      argv:
-        - /bin/bash
-        - -c
-        - >-
-          principal="${1}";
-          ldapdn="${2}";
-          if /usr/sbin/kadmin.local getprinc "${principal}" > /dev/null; then
-            echo "PRINCIPAL ALREADY EXISTS";
-          elif /usr/sbin/kadmin.local addprinc -x "dn=${ldapdn}" "${principal}"; then
-            echo "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY";
-          else
-            exit 1;
-          fi
-        - ansible
-        - "{{ item }}@{{ example_dns_name | upper }}"
-        - "uid={{ item }},ou=users,{{ example_ldap_name }}"
-      stdin: "{{ LDAPUserPassword }}\n{{ LDAPUserPassword }}\n"
-    register: kadminlocal_output
-    changed_when: kadminlocal_output.rc == 0 and "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY" in kadminlocal_output.stdout
-    failed_when: kadminlocal_output.rc != 0
+    include_tasks: addkrbuser.yml
     with_items: "{{ NATOalphabet }}"
+# https://stackoverflow.com/a/45506096
+  - name: Create kerberos principals for hosts found in inventory
+    include_tasks: addkrbservice.yml
+    with_items: "{{ hostlist }}"
+    vars:
+      hostlist: >
+        [ {% for i in groups['all'] %}
+          {
+            'host': '{{ i }}',
+            'service': 'host',
+            'keytabfile': '/etc/krb5.keytab'
+          }
+          {% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+# http://www.openldap.org/doc/admin24/guide.html#Pass-Through%20authentication
+  - name: Create kerberos principal for OpenLDAP service
+    include_tasks: addkrbservice.yml
+    with_items:
+      - { host: "{{ inventory_hostname }}", service: 'ldap', keytabfile: "{{ krb5slapdkeytabfile }}", keytabowner: 'ldap', keytabgroup: 'ldap' }
+# https://github.com/ansible/ansible/issues/19765
+#    notify:
+#    - Restart OpenLDAP service
+  - name: Deploy /etc/sasl2/slapd.conf file in order to have OpenLDAP performing SASL authentication using GSSAPI (Kerberos 5)
+    template:
+      src: sasl_slapd.conf.j2
+      dest: "{{ SASLConfigDir }}/slapd.conf"
+    notify:
+    - Restart OpenLDAP service
+  - name: Configure identity mapping for EXTERNAL SASL mechanism
+    ldap_attr:
+      dn: "cn=config"
+      name: olcAuthzRegexp
+      values: >-
+        {1}uid=([^,]*)(@{{ example_dns_name }})?(,cn={{ example_dns_name }})?,cn=[^,]+,cn=auth
+        uid=$1,{{ LDAPUsersContainer }},{{ example_ldap_name }}
+      state: present
   tags: krbsetup
 

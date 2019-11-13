@@ -1,4 +1,7 @@
 ---
+LDAPAdminUserName: "Manager"
+LDAPUsersContainer: "ou=users"
+LDAPGroupsContainer: "ou=groups"
 NATOalphabet:
   - alpha
   - bravo

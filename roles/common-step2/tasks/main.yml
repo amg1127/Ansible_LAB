@@ -1,13 +1,13 @@
 ---
-- name: check whether DKMS is installed and running
+- name: Check whether DKMS is installed and running
   block:
-  - name: enable and start DKMS service
+  - name: Enable and start DKMS service
     service:
       name: dkms.service
       state: started
       enabled: true
   rescue:
-  - name: reenable stock YUM repositories temporarily
+  - name: Reenable stock YUM repositories temporarily
     ini_file:
       dest: /etc/yum.repos.d/CentOS-Base.repo
       section: "{{ item }}"
@@ -18,20 +18,20 @@
       - updates
       - extras
       - centosplus
-  - name: install EPEL-release and DeltaRPM
+  - name: Install EPEL-release and DeltaRPM
     yum:
       name: "epel-release"
       state: present
-  - name: install DeltaRPM and DKMS
+  - name: Install DeltaRPM and DKMS
     yum:
       name: "deltarpm,dkms"
       state: present
-  - name: enable and run DKMS service
+  - name: Enable and run DKMS service
     service:
       name: dkms.service
       state: started
       enabled: true
-  - name: disable stock YUM repositories again
+  - name: Disable stock YUM repositories again
     ini_file:
       dest: /etc/yum.repos.d/CentOS-Base.repo
       section: "{{ item }}"
@@ -42,10 +42,16 @@
       - updates
       - extras
       - centosplus
-  - name: disable EPEL repositories
+  - name: Disable EPEL repositories
     ini_file:
       dest: /etc/yum.repos.d/epel.repo
       section: epel
       option: enabled
       value: "0"
+  - name: Update MAN database
+    command:
+      argv: /etc/cron.daily/man-db.cron
+    register: mandbcron_output
+    changed_when: false
+    failed_when: mandbcron_output.rc != 0
 

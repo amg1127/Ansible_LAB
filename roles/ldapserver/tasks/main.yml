@@ -1,18 +1,18 @@
 ---
 - name: LDAP server installation and configuration
   block:
-  - name: load passwords from vault file
+  - name: Load passwords from vault file
     include_vars: vaultfile.yml
-  - name: install OpenLDAP client, server and Python LDAP libraries
+  - name: Install OpenLDAP client, server and Python LDAP libraries
     yum:
       name: "openldap-servers,openldap-clients,python-ldap"
       state: present
-  - name: ensure the OpenLDAP server is running
+  - name: Ensure the OpenLDAP server is running
     service:
       name: slapd.service
       enabled: yes
       state: started
-  - name: load needed schemas
+  - name: Load needed schemas
     command:
       chdir: /etc/openldap/schema
       argv:
@@ -30,7 +30,7 @@
       - core
       - cosine
       - nis
-  - name: modify default root OpenLDAP database
+  - name: Modify default root OpenLDAP database
     ldap_attr:
       dn: olcDatabase={2}hdb,cn=config
       name: "{{ item.key }}"
@@ -45,23 +45,23 @@
           {0}to attrs=userPassword
           by self write
           by anonymous auth
-          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
           by * none
         - >-
           {1}to attrs=shadowLastChange
           by self write
           by anonymous auth
-          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
           by * read
         - >-
           {2}to dn.subtree="{{ example_ldap_name }}"
           by anonymous auth
-          by dn.exact="cn=Manager,{{ example_ldap_name }}" write
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
           by * read
         - >-
           {3}to *
           by * read
-  - name: create root container
+  - name: Create root container
     ldap_entry:
       dn: "{{ example_ldap_name }}"
       objectClass:
@@ -70,26 +70,26 @@
       attributes:
         o: "{{ example_dns_name }}"
       state: present
-  - name: create administrator user
+  - name: Create administrator user
     ldap_entry:
-      dn: "cn=Manager,{{ example_ldap_name }}"
+      dn: "cn={{ LDAPAdminUserName }},{{ example_ldap_name }}"
       objectClass: person
       attributes:
-        cn: "Manager"
-        sn: "Manager"
-        userPassword: "{{ LDAPManagerPassword }}"
+        cn: "{{ LDAPAdminUserName }}"
+        sn: "{{ LDAPAdminUserName }}"
+        userPassword: "{{ LDAPAdminPassword }}"
       state: present
-  - name: create LDAP users and groups containers
+  - name: Create LDAP users and groups containers
     ldap_entry:
-      dn: "ou={{ item }},{{ example_ldap_name }}"
+      dn: "{{ item }},{{ example_ldap_name }}"
       objectClass: organizationalUnit
       state: present
     with_items:
-      - users
-      - groups
-  - name: create LDAP groups
+      - "{{ LDAPUsersContainer }}"
+      - "{{ LDAPGroupsContainer }}"
+  - name: Create LDAP groups
     ldap_entry:
-      dn: "cn={{ item.1 }},ou=groups,{{ example_ldap_name }}"
+      dn: "cn={{ item.1 }},{{ LDAPGroupsContainer }},{{ example_ldap_name }}"
       objectClass: posixGroup
       attributes:
         cn: "{{ item.1 }}"
@@ -97,9 +97,9 @@
       state: present
     with_indexed_items:
       - "{{ NATOalphabet }}"
-  - name: create LDAP users
+  - name: Create LDAP users
     ldap_entry:
-      dn: "uid={{ item.1 }},ou=users,{{ example_ldap_name }}"
+      dn: "uid={{ item.1 }},{{ LDAPUsersContainer }},{{ example_ldap_name }}"
       objectClass:
         - posixAccount
         - person
@@ -115,5 +115,14 @@
       state: present
     with_indexed_items:
       - "{{ NATOalphabet }}"
+    no_log: yes
+  - name: Configure identity mapping for EXTERNAL SASL mechanism
+    ldap_attr:
+      dn: "cn=config"
+      name: olcAuthzRegexp
+      values: >-
+        {0}gidNumber=[0-9]+\+uidNumber=([0-9]+),cn=peercred,cn=external,cn=auth
+        ldap:///{{ LDAPUsersContainer }},{{ example_ldap_name }}??sub?(&(objectClass=posixAccount)(uidNumber=$1))
+      state: present
   tags: ldapsetup
 

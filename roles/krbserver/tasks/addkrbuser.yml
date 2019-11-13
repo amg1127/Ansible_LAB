@@ -1,0 +1,26 @@
+---
+# The fine art of workaround...
+- name: Add kerberos attributes to an existing LDAP user
+  command:
+    argv:
+      - /bin/bash
+      - -c
+      - >-
+        principal="${1}";
+        ldapdn="${2}";
+        if /usr/sbin/kadmin.local getprinc "${principal}" > /dev/null; then
+          echo "PRINCIPAL ALREADY EXISTS";
+        elif /usr/sbin/kadmin.local addprinc -x "dn=${ldapdn}" "${principal}"; then
+          echo "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY";
+        else
+          exit 1;
+        fi
+      - bash-ansible
+      - "{{ item }}@{{ example_dns_name | upper }}"
+      - "uid={{ item }},{{ LDAPUsersContainer }},{{ example_ldap_name }}"
+    stdin: "{{ LDAPUserPassword }}\n{{ LDAPUserPassword }}\n"
+  register: kadminlocal_output
+  changed_when: kadminlocal_output.rc == 0 and "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY" in kadminlocal_output.stdout
+  failed_when: kadminlocal_output.rc != 0
+  no_log: yes
+

@@ -1,0 +1,59 @@
+---
+- name: Collect the actual hostname of the server
+  setup:
+    gather_subset: min
+    filter: ansible_fqdn
+  delegate_to: "{{ item.host }}"
+  register: hostfqdn
+# The fine art of workaround, part #2...
+- name: Add kerberos principal for the host
+  command:
+    argv:
+      - /bin/bash
+      - -c
+      - >-
+        principal="${1}";
+        if /usr/sbin/kadmin.local getprinc "${principal}" > /dev/null; then
+          echo "PRINCIPAL ALREADY EXISTS";
+        elif /usr/sbin/kadmin.local addprinc -randkey "${principal}"; then
+          echo "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY";
+        else
+          exit 1;
+        fi
+      - bash-ansible
+      - "{{ item.service | default('host') }}/{{ hostfqdn['ansible_facts']['ansible_fqdn'] }}@{{ example_dns_name | upper }}"
+  register: kadminlocal_output
+  changed_when: kadminlocal_output.rc == 0 and "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY" in kadminlocal_output.stdout
+  failed_when: kadminlocal_output.rc != 0
+- name: Create temporary keytab file
+  tempfile:
+    state: directory
+    suffix: _krb5.keytab.d
+  register: krbtempdir
+  changed_when: false
+- name: Write host keytab to the temporary file
+  command:
+    argv:
+      - /usr/sbin/kadmin.local
+      - ktadd
+      - -keytab
+      - "{{ krbtempdir.path }}/krb5.keytab"
+      - -norandkey
+      - "{{ item.service | default('host') }}/{{ hostfqdn['ansible_facts']['ansible_fqdn'] }}@{{ example_dns_name | upper }}"
+  register: ktadd_output
+  changed_when: false
+  failed_when: ktadd_output.rc != 0
+- name: Get keytab contents in base64 encoding
+  slurp:
+    src: "{{ krbtempdir.path }}/krb5.keytab"
+  register: keytab_b64
+- name: Write host keytab file in the correct location
+  copy:
+    content: "{{ keytab_b64['content'] | b64decode }}"
+    dest: "{{ item.keytabfile | default('/etc/krb5.keytab') }}"
+    checksum: "{{ keytab_b64['content'] | b64decode | hash('sha1') }}"
+    mode: "{{ item.keytabperms | default('0600') }}"
+    owner: "{{ item.keytabowner | default('root') }}"
+    group: "{{ item.keytabgroup | default('root') }}"
+  delegate_to: "{{ item.host }}"
+
