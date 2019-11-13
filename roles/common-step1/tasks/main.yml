@@ -28,4 +28,21 @@
     mode: "0644"
     owner: root
     src: krb5.conf.j2
+- name: Load variables from LDAP role main file
+  include_vars: roles/ldapserver/vars/main.yml
+- name: Install OpenLDAP client packages
+  yum:
+    name: "openldap"
+    state: present
+- name: Install SASL client packages
+  yum:
+    name: "cyrus-sasl-gssapi,cyrus-sasl-plain"
+    state: present
+- name: Deploy ldap.conf file
+  template:
+    src: ldap.conf.j2
+    dest: /etc/openldap/ldap.conf
+    force: yes
+    group: root
+    mode: "0644"
 

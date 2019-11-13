@@ -12,6 +12,16 @@
       name: slapd.service
       enabled: yes
       state: started
+  - name: Open LDAP ports in firewalld
+    firewalld:
+      permanent: yes
+      immediate: yes
+      service: "{{ item }}"
+      zone: public
+      state: enabled
+    with_items:
+      - ldap
+      - ldaps
   - name: Load needed schemas
     command:
       chdir: /etc/openldap/schema

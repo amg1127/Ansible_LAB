@@ -7,6 +7,7 @@ servera A 172.24.0.2
 servera AAAA fc00:172:24:0::2
 
 ; DNS records for kerberos
+ldap                  CNAME servera
 kerberos              CNAME servera
 _kerberos             TXT "{{ example_dns_name | upper }}"
 _kerberos._udp        SRV 0 0 88 kerberos

@@ -11,6 +11,10 @@
   service:
     name: slapd.service
     state: restarted
+- name: Restart saslauthd service
+  service:
+    name: saslauthd.service
+    state: restarted
 - name: Reload systemd configuration
   systemd:
     daemon_reload: yes

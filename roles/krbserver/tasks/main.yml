@@ -11,10 +11,25 @@
     yum:
       name: "krb5-server,krb5-server-ldap"
       state: present
-  - name: Install Cyrus SASL libraries
+  - name: Install Cyrus SASL packages
     yum:
-      name: "cyrus-sasl-gssapi,cyrus-sasl-plain"
+      name: "cyrus-sasl,cyrus-sasl-gssapi,cyrus-sasl-plain"
       state: present
+# https://security.stackexchange.com/a/69031
+  - name: Enable Kerberos5 authentication mechanism in saslauthd
+    ini_file:
+      dest: /etc/sysconfig/saslauthd
+      section: null
+      option: MECH
+      value: kerberos5
+      no_extra_spaces: yes
+    notify: Restart saslauthd service
+  - name: Ensure saslauthd service is running
+    service:
+      name: "saslauthd.service"
+      enabled: yes
+      state: started
+# http://web.mit.edu/kerberos/krb5-latest/doc/admin/conf_ldap.html
   - name: Find kerberos schema file
     command:
       argv:
@@ -145,14 +160,28 @@
     with_dict:
       olcAccess:
         - >-
-          {2}to dn.subtree="cn={{ example_dns_name | upper }},cn=krbcontainer,{{ example_ldap_name }}"
+          {0}to attrs=userPassword val.regex="^\{SASL\}"
+          by self read
+          by anonymous auth
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+          by * none
+        - >-
+          {3}to attrs=krbPrincipalKey
+          by self write
           by anonymous auth
           by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
           by dn.exact="cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}" write
           by dn.exact="cn={{ kadmindLDAPUserName }},{{ example_ldap_name }}" write
           by * none
         - >-
-          {3}to dn.subtree="{{ LDAPUsersContainer }},{{ example_ldap_name }}"
+          {4}to dn.subtree="cn={{ example_dns_name | upper }},cn=krbcontainer,{{ example_ldap_name }}"
+          by anonymous auth
+          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}" write
+          by dn.exact="cn={{ kadmindLDAPUserName }},{{ example_ldap_name }}" write
+          by * none
+        - >-
+          {5}to dn.subtree="{{ LDAPUsersContainer }},{{ example_ldap_name }}"
           by anonymous auth
           by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
           by dn.exact="cn={{ krb5kdcLDAPUserName }},{{ example_ldap_name }}" write
@@ -316,8 +345,16 @@
       dn: "cn=config"
       name: olcAuthzRegexp
       values: >-
-        {1}uid=([^,]*)(@{{ example_dns_name }})?(,cn={{ example_dns_name }})?,cn=[^,]+,cn=auth
+        {1}uid=([^,@]*)(@{{ example_dns_name }})?(,cn={{ example_dns_name }})?,cn=[^,]+,cn=auth
         uid=$1,{{ LDAPUsersContainer }},{{ example_ldap_name }}
       state: present
+  - name: Configure LDAP users to have passwords authenticated using SASL and Kerberos
+    ldap_attr:
+      dn: "uid={{ item }},{{ LDAPUsersContainer }},{{ example_ldap_name }}"
+      name: userPassword
+      values: "{SASL}{{ item }}@{{ example_dns_name | upper }}"
+      state: present
+    with_items:
+      - "{{ NATOalphabet }}"
   tags: krbsetup
 
