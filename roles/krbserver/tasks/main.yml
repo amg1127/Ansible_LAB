@@ -340,6 +340,14 @@
       dest: "{{ SASLConfigDir }}/slapd.conf"
     notify:
     - Restart OpenLDAP service
+  - name: Adjust KRB5_KTNAME environment variable for slapd
+    ini_file:
+      dest: /etc/sysconfig/slapd
+      section: null
+      option: KRB5_KTNAME
+      value: "{{ krb5slapdkeytabfile }}"
+      no_extra_spaces: yes
+    notify: Restart OpenLDAP service
   - name: Configure identity mapping for EXTERNAL SASL mechanism
     ldap_attr:
       dn: "cn=config"

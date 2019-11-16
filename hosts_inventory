@@ -3,6 +3,7 @@ all:
   vars:
     example_dns_name: "example.com"
     example_ldap_name: "dc=example,dc=com"
+    certauthorityTrustedCARoot: "/etc/pki/ca-trust/source/anchors"
   children:
     servers:
       children:

@@ -1,6 +1,6 @@
 ---
-certauthorityTrustedCARoot: "/etc/pki/ca-trust/source/anchors"
 certauthorityRoot: "/etc/pki/CA"
 certauthorityPrivateKeyPath: "{{ certauthorityRoot }}/private/{{ example_dns_name }}_CA.key"
 certauthorityCSRPath: "{{ certauthorityRoot }}/certs/{{ example_dns_name }}_CA.csr"
 certauthorityCertificatePath: "{{ certauthorityRoot }}/certs/{{ example_dns_name }}_CA.crt"
+

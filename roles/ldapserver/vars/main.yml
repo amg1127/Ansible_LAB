@@ -1,4 +1,6 @@
 ---
+LDAPTLSCertificateFile: "/etc/openldap/slapd-certificate.crt"
+LDAPTLSKeyFile: "/etc/openldap/slapd-keyfile.key"
 LDAPAdminUserName: "Manager"
 LDAPUsersContainer: "ou=users"
 LDAPGroupsContainer: "ou=groups"

@@ -4,9 +4,9 @@
     argv:
       - /usr/bin/update-ca-trust
       - enable
-  notify: Update CA trust - Step 2
   delegate_to: "{{ item }}"
   with_items: "{{ groups['all'] }}"
+  notify: Update CA trust - Step 2
 - name: Update CA trust - Step 2
   command:
     argv:

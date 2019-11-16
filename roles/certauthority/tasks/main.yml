@@ -15,6 +15,7 @@
       path: "{{ certauthorityPrivateKeyPath }}"
       size: 4096
       type: RSA
+      state: present
     no_log: yes
   - name: Generate a certificate request for CA deployment
     openssl_csr:
@@ -29,6 +30,7 @@
       O: "AMG1127"
       OU: "Computer"
       use_common_name_for_san: no
+      state: present
   - name: Generate a certificate authority
     openssl_certificate:
       mode: "0644"
@@ -40,6 +42,7 @@
       selfsigned_not_before: 20190818172000Z 
       selfsigned_not_after: 20380119031408Z
       selfsigned_digest: sha512
+      state: present
   - name: Get the generated certificate authority PEM file
     slurp:
       src: "{{ certauthorityCertificatePath }}"
@@ -52,5 +55,12 @@
     delegate_to: "{{ item }}"
     with_items: "{{ groups['all'] }}"
     notify: Update CA trust
+  - name: Store the inventory hostname of the server who are assigned the certauthority role
+    command:
+      argv:
+        - /usr/bin/cat
+      stdin: "{{ inventory_hostname }}"
+    changed_when: no
+    register: certauthority_hostname
   tags: certauthoritysetup
 

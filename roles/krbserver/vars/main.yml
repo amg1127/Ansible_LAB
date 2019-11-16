@@ -1,6 +1,6 @@
 ---
 krb5kdcLDAPUserName: "krb5kdc"
 kadmindLDAPUserName: "kadmind"
-krb5slapdkeytabfile: "/etc/openldap/slapd-krb5.keytab"
+krb5slapdkeytabfile: "/etc/openldap/ldap.keytab"
 SASLConfigDir: "/etc/sasl2"
 

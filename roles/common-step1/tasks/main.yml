@@ -32,7 +32,7 @@
   include_vars: roles/ldapserver/vars/main.yml
 - name: Install OpenLDAP client packages
   yum:
-    name: "openldap"
+    name: "openldap,openldap-clients"
     state: present
 - name: Install SASL client packages
   yum:

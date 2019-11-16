@@ -1,0 +1,5 @@
+---
+- name: Restart OpenLDAP service
+  service:
+    name: slapd.service
+    state: restarted
