@@ -27,6 +27,7 @@
   become_user: root
   strategy: free
   roles:
+    - certauthority
     - dnsserver
     - ldapserver
     - krbserver

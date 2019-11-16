@@ -1,0 +1,56 @@
+---
+- name: CA deployment
+  block:
+  - name: Install cryptography packages
+    yum:
+      name: "python2-cryptography"
+      state: present
+  - name: Load passwords from vault file
+    include_vars: vaultfile.yml
+  - name: Generate a private key for CA deployment
+    openssl_privatekey:
+      mode: "0600"
+      cipher: auto
+      passphrase: "{{ certauthorityPrivateKeyPassword }}"
+      path: "{{ certauthorityPrivateKeyPath }}"
+      size: 4096
+      type: RSA
+    no_log: yes
+  - name: Generate a certificate request for CA deployment
+    openssl_csr:
+      path: "{{ certauthorityCSRPath }}"
+      digest: sha512
+      privatekey_path: "{{ certauthorityPrivateKeyPath }}"
+      privatekey_passphrase: "{{ certauthorityPrivateKeyPassword }}"
+      CN: "{{ example_dns_name }} Certificate Authority"
+      C: "NZ"
+      ST: "Auckland"
+      L: "Auckland"
+      O: "AMG1127"
+      OU: "Computer"
+      use_common_name_for_san: no
+  - name: Generate a certificate authority
+    openssl_certificate:
+      mode: "0644"
+      provider: selfsigned
+      path: "{{ certauthorityCertificatePath }}"
+      csr_path: "{{ certauthorityCSRPath }}"
+      privatekey_path: "{{ certauthorityPrivateKeyPath }}"
+      privatekey_passphrase: "{{ certauthorityPrivateKeyPassword }}"
+      selfsigned_not_before: 20190818172000Z 
+      selfsigned_not_after: 20380119031408Z
+      selfsigned_digest: sha512
+  - name: Get the generated certificate authority PEM file
+    slurp:
+      src: "{{ certauthorityCertificatePath }}"
+    register: certauthorityfile_b64
+  - name: Deploy certificate authority PEM file to the directory containing trusted CA files
+    copy:
+      content: "{{ certauthorityfile_b64['content'] | b64decode }}"
+      dest: "{{ certauthorityTrustedCARoot }}/{{ example_dns_name }}_CA.crt"
+      checksum: "{{ certauthorityfile_b64['content'] | b64decode | hash('sha1') }}"
+    delegate_to: "{{ item }}"
+    with_items: "{{ groups['all'] }}"
+    notify: Update CA trust
+  tags: certauthoritysetup
+

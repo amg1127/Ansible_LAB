@@ -1,0 +1,17 @@
+---
+- name: Update CA trust
+  command:
+    argv:
+      - /usr/bin/update-ca-trust
+      - enable
+  notify: Update CA trust - Step 2
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['all'] }}"
+- name: Update CA trust - Step 2
+  command:
+    argv:
+      - /usr/bin/update-ca-trust
+      - extract
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['all'] }}"
+
