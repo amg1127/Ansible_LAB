@@ -1,0 +1,91 @@
+---
+- name: Generate the private key
+  openssl_privatekey:
+    path: "{{ item.PrivateKeyOutputFile }}"
+    mode: "{{ item.PrivateKeyMode | default('0600') }}"
+    owner: "{{ item.PrivateKeyOwner | default('root') }}"
+    group: "{{ item.PrivateKeyGroup | default('root') }}"
+    state: present
+- name: Ensure that the certificate has been generated
+  block:
+  - name: Collect the actual hostname of the server
+    setup:
+      gather_subset: min
+    register: hostfqdn
+  - name: Verify certificate properties
+    openssl_certificate:
+      provider: assertonly
+      path: "{{ item.CertificateOutputFile }}"
+      has_expired: no
+      subject_alt_name: "{{ item.CertificateSubjectAltNames | default([]) | union(['DNS:' + hostfqdn['ansible_facts']['ansible_fqdn'], 'DNS:' + hostfqdn['ansible_facts']['ansible_hostname']]) }}"
+  rescue:
+  - name: Create a temporary file that will store the CSR
+    tempfile:
+      state: file
+      suffix: _cert.csr
+    register: cert_localcsrfile
+  - name: Generate certificate signing request
+    openssl_csr:
+      path: "{{ cert_localcsrfile.path }}"
+      privatekey_path: "{{ item.PrivateKeyOutputFile }}"
+      CN: "{{ hostfqdn['ansible_facts']['ansible_fqdn'] }}"
+      C: "NZ"
+      ST: "Auckland"
+      L: "Auckland"
+      O: "AMG1127"
+      OU: "Computer"
+      subject_alt_name: "{{ item.CertificateSubjectAltNames | default([]) | union(['DNS:' + hostfqdn['ansible_facts']['ansible_fqdn'], 'DNS:' + hostfqdn['ansible_facts']['ansible_hostname']]) }}"
+      basic_constraints:
+      - "CA:FALSE"
+      key_usage:
+      - digitalSignature
+      - keyEncipherment
+      extended_key_usage:
+      - serverAuth
+      - clientAuth
+      state: present
+  - name: Get the generated CSR file
+    slurp:
+      src: "{{ cert_localcsrfile.path }}"
+    register: itemcsrfile_b64
+  - name: Create a tempfile in the server with 'certauthority' role assignment
+    tempfile:
+      state: file
+      suffix: _cert.csr
+    register: cert_csrfile
+    delegate_to: "{{ item.CAinventory_hostname }}"
+  - name: Create another tempfile in the server with 'certauthority' role assignment
+    tempfile:
+      state: file
+      suffix: _cert.crt
+    register: cert_certfile
+    delegate_to: "{{ item.CAinventory_hostname }}"
+  - name: Deploy CSR file to the server with 'certauthority' role assignment
+    copy:
+      content: "{{ itemcsrfile_b64['content'] | b64decode }}"
+      dest: "{{ cert_csrfile.path }}"
+      checksum: "{{ itemcsrfile_b64['content'] | b64decode | hash('sha1') }}"
+    delegate_to: "{{ item.CAinventory_hostname }}"
+  - name: Sign the CSR in the server with 'certauthority' role assignment
+    openssl_certificate:
+      mode: "0644"
+      provider: ownca
+      path: "{{ cert_certfile.path }}"
+      csr_path: "{{ cert_csrfile.path }}"
+      ownca_path: "{{ certauthorityCertificatePath }}"
+      ownca_privatekey_path: "{{ certauthorityPrivateKeyPath }}"
+      ownca_privatekey_passphrase: "{{ certauthorityPrivateKeyPassword }}"
+      ownca_not_after: "+365d"
+      state: present
+    delegate_to: "{{ item.CAinventory_hostname }}"
+  - name: Get the generated certificate file
+    slurp:
+      src: "{{ cert_certfile.path }}"
+    register: cert_certfile_b64
+    delegate_to: "{{ item.CAinventory_hostname }}"
+  - name: Store the generated OpenLDAP certificate at the correct location
+    copy:
+      content: "{{ cert_certfile_b64['content'] | b64decode }}"
+      dest: "{{ item.CertificateOutputFile }}"
+      checksum: "{{ cert_certfile_b64['content'] | b64decode | hash('sha1') }}"
+

@@ -361,7 +361,7 @@
       dn: "uid={{ item }},{{ LDAPUsersContainer }},{{ example_ldap_name }}"
       name: userPassword
       values: "{SASL}{{ item }}@{{ example_dns_name | upper }}"
-      state: present
+      state: exact
     with_items:
       - "{{ NATOalphabet }}"
   tags: krbsetup

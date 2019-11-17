@@ -26,48 +26,17 @@
     with_items:
       - ldap
       - ldaps
-  - name: Generate a private key for OpenLDAP
-    openssl_privatekey:
-      mode: "0600"
-      path: "{{ LDAPTLSKeyFile }}"
-      owner: ldap
-      group: ldap
-      state: present
-  - name: Ensure that a certificate for OpenLDAP has been generated
-    block:
-    - name: Collect the actual hostname of the server
-      setup:
-        gather_subset: min
-      register: hostfqdn
-    - name: Collect OpenLDAP certificate properties
-      openssl_certificate_info:
-        path: "{{ LDAPTLSCertificateFile }}"
-      register: LDAPTLSCertificateInfo
-    - name: Verify OpenLDAP certificate properties
-      assert:
-        that:
-          - LDAPTLSCertificateInfo.expired == False
-    rescue:
-    - name: Generate certificate signing request for OpenLDAP
-      openssl_csr:
-        path: "{{ LDAPTLSCertificateFile }}.csr"
-        privatekey_path: "{{ LDAPTLSKeyFile }}"
-        CN: "ldap.{{ example_dns_name }}"
-        C: "NZ"
-        ST: "Auckland"
-        L: "Auckland"
-        O: "AMG1127"
-        OU: "Computer"
-        subject_alt_name:
-          - "DNS:ldap.{{ example_dns_name }}"
-          - "DNS:{{ hostfqdn['ansible_facts']['ansible_fqdn'] }}"
-          - "DNS:ldap"
-          - "DNS:{{ hostfqdn['ansible_facts']['ansible_hostname'] }}"
-        state: present
-    - name: Sign the CSR in the server with 'certauthority' role assignment
-      include_tasks: roles/certauthority/tasks/certificatesigning.yml
-      with_items:
-      - { CSRInputFile: "{{ LDAPTLSCertificateFile }}.csr", CAinventory_hostname: "{{ certauthority_hostname.stdout }}", CertificateOutputFile: "{{ LDAPTLSCertificateFile }}" }
+  - name: Generate a private key and a certificate for OpenLDAP
+    include_tasks: roles/certauthority/tasks/certificategeneration.yml
+    with_items:
+    - {
+        CAinventory_hostname: "{{ certauthority_hostname.stdout }}",
+        PrivateKeyOutputFile: "{{ LDAPTLSKeyFile }}",
+        PrivateKeyOwner: ldap,
+        PrivateKeyGroup: ldap,
+        CertificateOutputFile: "{{ LDAPTLSCertificateFile }}",
+        CertificateSubjectAltNames: [ "DNS:ldap", "DNS:ldap.{{ example_dns_name }}" ]
+      }
 # https://github.com/ansible/ansible/issues/25665#issuecomment-395444351
   - name: Configure certificates for LDAPS service
     block:
