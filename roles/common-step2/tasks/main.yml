@@ -48,10 +48,43 @@
       section: epel
       option: enabled
       value: "0"
-  - name: Update MAN database
-    command:
-      argv: /etc/cron.daily/man-db.cron
-    register: mandbcron_output
-    changed_when: false
-    failed_when: mandbcron_output.rc != 0
+- name: Install Kerberos and LDAP authentication packages
+  yum:
+    name: "pam_krb5,sssd-client,sssd-krb5,sssd-ldap"
+    state: present
+# https://docs.pagure.org/SSSD.sssd/users/ldap_with_ad.html
+- name: Deploy SSSD configuration file
+  template:
+    src: sssd.conf.j2
+    dest: /etc/sssd/sssd.conf
+    mode: "0600"
+  notify: Restart SSSD service
+- name: Enable Kerberos authentication and LDAP NSS
+  command:
+    argv:
+    - /usr/sbin/authconfig
+    - --update
+    - --enableshadow
+    - --enablesssd
+    - --enablesssdauth
+    - --enablecachecreds
+    - --enablemkhomedir
+- name: Ensure SSSD service is running
+  service:
+    name: sssd.service
+    state: started
+    enabled: yes
+- name: Configure SSH client to delegate Kerberos credentials to server by default
+  lineinfile:
+    path: /etc/ssh/ssh_config
+    regexp: '^[#\s]*GSSAPIDelegateCredentials\s*'
+    line: '    GSSAPIDelegateCredentials yes'
+    insertafter: '^Host\s+\*\s*$'
+# This should be the last task
+- name: Update MAN database
+  command:
+    argv: /etc/cron.daily/man-db.cron
+  register: mandbcron_output
+  changed_when: false
+  failed_when: mandbcron_output.rc != 0
 

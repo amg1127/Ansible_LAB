@@ -1,4 +1,7 @@
 ---
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
 - name: Restart KDC service
   service:
     name: krb5kdc.service
@@ -15,7 +18,4 @@
   service:
     name: saslauthd.service
     state: restarted
-- name: Reload systemd configuration
-  systemd:
-    daemon_reload: yes
 

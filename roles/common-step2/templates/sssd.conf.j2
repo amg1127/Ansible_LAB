@@ -1,0 +1,63 @@
+[sssd]
+domains = {{ example_dns_name }}
+services = nss, pam
+
+[nss]
+
+[pam]
+
+[domain/{{ example_dns_name }}]
+# Unless you know you need referrals, turn them off
+ldap_referrals = false
+# Uncomment if you need offline logins
+# cache_credentials = true
+enumerate = false
+
+id_provider = ldap
+auth_provider = krb5
+chpass_provider = krb5
+access_provider = ldap
+
+dns_discovery_domain = {{ example_dns_name }}
+ldap_access_filter = (objectClass=posixAccount)
+
+# Uncomment if service discovery is not working
+#ldap_uri = ldap://server.ad.example.com/
+
+# Comment out if not using SASL/GSSAPI to bind
+ldap_sasl_mech = GSSAPI
+# Uncomment and adjust if the default principal host/fqdn@REALM is not available
+#ldap_sasl_authid = nfs/client.ad.example.com@AD.EXAMPLE.COM
+
+# Define these only if anonymous binds are not allowed and no keytab is available
+# Enabling use_start_tls is very important, otherwise the bind password is transmitted
+# over the network in the clear
+#ldap_id_use_start_tls = True
+#ldap_default_bind_dn = CN=binduser,OU=user accounts,DC=ad,DC=example,DC=com
+#ldap_default_authtok_type = password
+#ldap_default_authtok = bindpass
+
+ldap_schema = rfc2307
+
+ldap_force_upper_case_realm = true
+
+# Uncomment if dns discovery of your AD servers isn't working.
+#krb5_server = server.ad.example.com
+krb5_realm = {{ example_dns_name | upper }}
+
+# Probably required with sssd 1.8.x and newer
+krb5_canonicalize = false
+
+# Perhaps you need to redirect to certain attributes?
+# ldap_user_object_class = user
+# ldap_user_name = sAMAccountName
+# ldap_user_uid_number = msSFU30UidNumber
+# ldap_user_gid_number = msSFU30GidNumber
+# ldap_user_gecos = displayName
+# ldap_user_home_directory = msSFU30HomeDirectory
+# ldap_user_shell = msSFU30LoginShell
+# ldap_user_principal = userPrincipalName
+# ldap_group_object_class = group
+# ldap_group_name = cn
+# ldap_group_gid_number = msSFU30GidNumber
+

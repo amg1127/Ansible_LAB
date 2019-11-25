@@ -8,6 +8,8 @@ servera AAAA fc00:172:24:0::2
 
 ; DNS records for kerberos
 ldap                  CNAME servera
+_ldap._tcp            SRV 0 0 389 ldap
+_ldaps._tcp           SRV 0 0 636 ldap
 kerberos              CNAME servera
 _kerberos             TXT "{{ example_dns_name | upper }}"
 _kerberos._udp        SRV 0 0 88 kerberos
