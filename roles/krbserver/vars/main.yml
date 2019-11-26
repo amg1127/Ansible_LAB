@@ -1,4 +1,5 @@
 ---
+krb5kdc_rootdir: "/var/kerberos/krb5kdc"
 krb5kdcLDAPUserName: "krb5kdc"
 kadmindLDAPUserName: "kadmind"
 krb5slapdkeytabfile: "/etc/openldap/ldap.keytab"

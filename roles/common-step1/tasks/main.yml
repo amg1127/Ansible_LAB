@@ -1,21 +1,41 @@
 ---
+- name: Set keyboard layout to US-ACENTOS
+  command:
+    argv:
+    - /usr/bin/localectl
+    - set-keymap
+    - us-acentos
+- name: Create CDROM mount point
+  file:
+    path: "{{ CDROMISOMountPoint }}"
+    state: directory
+- name: Mount the ISO image on CDROM mount point
+  mount:
+    src: "{{ CDROMDevice }}"
+    path: "{{ CDROMISOMountPoint }}"
+    fstype: auto
+    opts: defaults,x-systemd.automount,nofail
+    state: mounted
+    boot: yes
 - name: Disable stock YUM repositories
   ini_file:
     dest: /etc/yum.repos.d/CentOS-Base.repo
     section: "{{ item }}"
     option: enabled
     value: "0"
+    no_extra_spaces: yes
   with_items:
-    - base
-    - updates
-    - extras
-    - centosplus
+  - base
+  - updates
+  - extras
+  - centosplus
 - name: Enable local YUM repository
   ini_file:
     dest: /etc/yum.repos.d/CentOS-Media.repo
     section: "c7-media"
     option: enabled
     value: "1"
+    no_extra_spaces: yes
 - name: Install Kerberos client packages
   yum:
     name: "krb5-workstation"

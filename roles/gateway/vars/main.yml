@@ -1,0 +1,5 @@
+---
+gateway_publicIF: "enp0s3"
+gateway_privateIF1: "enp0s8"
+gateway_privateIF2: "enp0s9"
+

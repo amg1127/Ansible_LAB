@@ -8,6 +8,13 @@
     wait_for_connection:
       timeout: 300
 
+- hosts: gateway
+  become: yes
+  become_user: root
+  strategy: free
+  roles:
+    - gateway
+
 - hosts: all
   become: yes
   become_user: root

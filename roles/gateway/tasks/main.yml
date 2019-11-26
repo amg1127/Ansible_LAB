@@ -1,0 +1,48 @@
+---
+- name: LDAP server installation and configuration
+  block:
+  - name: Assign interfaces to firewall zones
+    firewalld:
+      interface: "{{ item.iface }}"
+      zone: "{{ item.zone }}"
+      state: enabled
+      immediate: yes
+      permanent: yes
+    with_items:
+      - { iface: "{{ gateway_publicIF }}",   zone: "public"   }
+      - { iface: "{{ gateway_privateIF1 }}", zone: "internal" }
+      - { iface: "{{ gateway_privateIF2 }}", zone: "internal" }
+  - name: Enable masquerading in public zone
+    firewalld:
+      zone: public
+      masquerade: "yes"
+      state: enabled
+      immediate: yes
+      permanent: yes
+# https://github.com/ansible/ansible/issues/21439
+  - name: Define direct rules intended for routing
+    command:
+      argv:
+      - /bin/bash
+      - -c
+      - >-
+        if /usr/bin/firewall-cmd --permanent --direct --query-rule ${@}; then
+          echo "RULE ALREADY EXISTS";
+        elif /usr/bin/firewall-cmd --permanent --direct --add-rule ${@}; then
+          /usr/bin/firewall-cmd --direct --add-rule ${@}
+          echo "RULE HAS BEEN CREATED SUCCESSFULLY";
+        else
+          exit 1;
+        fi
+      - bash-ansible
+      - "{{ item }}"
+    with_items:
+    - "ipv4 filter FORWARD_direct 0 -i {{ gateway_privateIF1 }} -o {{ gateway_privateIF2 }} -j ACCEPT"
+    - "ipv4 filter FORWARD_direct 0 -i {{ gateway_privateIF2 }} -o {{ gateway_privateIF1 }} -j ACCEPT"
+    - "ipv6 filter FORWARD_direct 0 -i {{ gateway_privateIF1 }} -o {{ gateway_privateIF2 }} -j ACCEPT"
+    - "ipv6 filter FORWARD_direct 0 -i {{ gateway_privateIF2 }} -o {{ gateway_privateIF1 }} -j ACCEPT"
+    register: firewalldirect_output
+    changed_when: firewalldirect_output.rc == 0 and "RULE HAS BEEN CREATED SUCCESSFULLY" in firewalldirect_output.stdout
+    failed_when: firewalldirect_output.rc != 0
+  tags: gwsetup
+

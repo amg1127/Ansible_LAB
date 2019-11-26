@@ -1,6 +1,8 @@
 ---
 - name: LDAP server installation and configuration
   block:
+  - name: Load variables from step-1 role main file
+    include_vars: roles/common-step1/vars/main.yml
   - name: Load passwords from CA role vault file
     include_vars: roles/certauthority/vars/vaultfile.yml
   - name: Load variables from CA role main file

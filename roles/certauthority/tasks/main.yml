@@ -5,8 +5,19 @@
     yum:
       name: "python2-cryptography"
       state: present
+  - name: Load variables from step-1 role main file
+    include_vars: roles/common-step1/vars/main.yml
   - name: Load passwords from vault file
     include_vars: vaultfile.yml
+  - name: Ensure that directories used for CA storage exist
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: "0700"
+    with_items:
+      - "{{ certauthorityRoot }}"
+      - "{{ certauthorityRoot }}/certs"
+      - "{{ certauthorityRoot }}/private"
   - name: Generate a private key for CA deployment
     openssl_privatekey:
       mode: "0600"

@@ -1,4 +1,8 @@
 ---
+# TODO: IP addresses are hardcoded. Must get the correct data from variables defined by Vagrant
+- name: REMIND
+  debug:
+    msg: "IP addresses are hardcoded. Must get the correct data from variables defined by Vagrant"
 - name: DNS server installation and configuration
   block:
   - name: Install DNS Server

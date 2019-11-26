@@ -1,7 +1,11 @@
 ##################################################################
 # Virtual machine configuration
 vm_name_prefix = "vagrant_"
-centos_version = "7"
+
+centos_dist_version = "7"
+centos_box_version = "7.6.1810"
+centos_box_ide_ctrl = "IDE"
+centos_box_sata_ctrl = "SATA"
 
 ##################################################################
 # NetworkManager connection names, as presented by "nmcli" after virtual machine deployment
@@ -44,25 +48,32 @@ end
 Vagrant.configure("2") do |config|
   # Unofficial CentOS box
   # I am not using the official CentOS box because it has "net.ifnames=0" set in kernel command line.
-  #config.vm.box = "centos/" + centos_version
-  config.vm.box = "kane_project/centos" + centos_version
+  #config.vm.box = "centos/" + centos_dist_version
+  config.vm.box = "kane_project/centos" + centos_dist_version
+  config.vm.box_version = centos_box_version
   
   # Disable shared folders feature
   config.vm.synced_folder ".", "/vagrant", disabled: true
   
+  # Disable "UseDNS" in SSH server config files - DNS server will be ready after running the Ansible playbook only...
+  config.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
+
+  # Common VirtualBox provider parameters: GUI enabled, linked clone, standard CPU and memory configuration and ISO disk attachment
+  config.vm.provider :virtualbox do |v|
+    v.gui = true
+    v.linked_clone = true
+    v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "2048", "--vram", "16", "--boot1", "disk"]
+    v.customize ["storagectl", :id, "--name", centos_box_sata_ctrl, "--hostiocache", "on"]
+    v.customize ["storagectl", :id, "--name", centos_box_ide_ctrl, "--hostiocache", "on"]
+    v.customize ["storageattach", :id, "--storagectl", centos_box_ide_ctrl, "--port", "0", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_dist_version + "-x86_64.iso"]
+  end
+
   config.vm.define "gateway" do |guestVM|
     guestVM.vm.provider :virtualbox do |v|
-      v.gui = true
       v.name = vm_name_prefix + "gateway" + "." + example_dns_name
-      v.linked_clone = true
-      v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "1024", "--vram", "16"]
-      v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_version + "-x86_64.iso"]
     end
     guestVM.vm.hostname = "gateway" + "." + example_dns_name
     
-    # Disable "UseDNS" in SSH server config - DNS server will be ready after running the Ansible playbook only...
-    guestVM.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
-
     # I could not find instructions for setting both IPv4+IPv6 addresses on a single network interface.
     # I am going to assign IPv6 addresses manually instead...
     guestVM.vm.network "private_network", ip: gateway_net0_addr4 , netmask: "255.255.255.0", virtualbox__intnet: "net_" + vm_name_prefix + "0"
@@ -82,17 +93,10 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "servera" do |guestVM|
     guestVM.vm.provider :virtualbox do |v|
-      v.gui = true
       v.name = vm_name_prefix + "servera" + "." + example_dns_name
-      v.linked_clone = true
-      v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "1024", "--vram", "16"]
-      v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_version + "-x86_64.iso"]
     end
     guestVM.vm.hostname = "servera" + "." + example_dns_name
     
-    # Disable "UseDNS" in SSH server config - DNS server will be ready after running the Ansible playbook only...
-    guestVM.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
-
     # I could not find instructions for setting both IPv4+IPv6 addresses on a single network interface.
     # I am going to assign IPv6 addresses manually instead...
     guestVM.vm.network "private_network", ip: servera_net0_addr4, netmask: "255.255.255.0", virtualbox__intnet: "net_" + vm_name_prefix + "0"
@@ -113,16 +117,9 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "serverb" do |guestVM|
     guestVM.vm.provider :virtualbox do |v|
-      v.gui = true
       v.name = vm_name_prefix + "serverb" + "." + example_dns_name
-      v.linked_clone = true
-      v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "1024", "--vram", "16"]
-      v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_version + "-x86_64.iso"]
     end
     guestVM.vm.hostname = "serverb" + "." + example_dns_name
-
-    # Disable "UseDNS" in SSH server config - DNS server will be ready after running the Ansible playbook only...
-    guestVM.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
 
     # I could not find instructions for setting both IPv4+IPv6 addresses on a single network interface.
     # I am going to assign IPv6 addresses manually instead...
@@ -148,16 +145,9 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "serverc" do |guestVM|
     guestVM.vm.provider :virtualbox do |v|
-      v.gui = true
       v.name = vm_name_prefix + "serverc" + "." + example_dns_name
-      v.linked_clone = true
-      v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "1024", "--vram", "16"]
-      v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_version + "-x86_64.iso"]
     end
     guestVM.vm.hostname = "serverc" + "." + example_dns_name
-
-    # Disable "UseDNS" in SSH server config - DNS server will be ready after running the Ansible playbook only...
-    guestVM.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
 
     # I could not find instructions for setting both IPv4+IPv6 addresses on a single network interface.
     # I am going to assign IPv6 addresses manually instead...
@@ -183,16 +173,11 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "workstation" do |guestVM|
     guestVM.vm.provider :virtualbox do |v|
-      v.gui = true
       v.name = vm_name_prefix + "workstation" + "." + example_dns_name
-      v.linked_clone = true
+      # Workstation will have additional memory because I am going to install graphical environment
       v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "2048", "--vram", "16"]
-      v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_version + "-x86_64.iso"]
     end
     guestVM.vm.hostname = "workstation" + "." + example_dns_name
-
-    # Disable "UseDNS" in SSH server config - DNS server will be ready after running the Ansible playbook only...
-    guestVM.vm.provision "shell", inline: "sed -i'' 's/^[[:space:]#]*UseDNS[[:space:]].*$/UseDNS no/' /etc/ssh/sshd_config ; systemctl reload-or-try-restart sshd"
 
     # I could not find instructions for setting both IPv4+IPv6 addresses on a single network interface.
     # I am going to assign IPv6 addresses manually instead...
@@ -210,6 +195,29 @@ Vagrant.configure("2") do |config|
     # Commit interface configuration changes
     guestVM.vm.provision "shell", inline: "nmcli con down " + nmconn_1 + " && nmcli con up " + nmconn_1
     guestVM.vm.provision "shell", inline: "nmcli con down " + nmconn_2 + " && nmcli con up " + nmconn_2
+
+    # Because this is the last machine, launch the Ansible provisioner from it
+    guestVM.vm.provision "ansible" do |ansible|
+      ansible.playbook = "./playbook.yml"
+      ansible.limit = "all"
+      ansible.extra_vars = {
+        example_dns_name: example_dns_name,
+        example_ldap_name: example_ldap_name,
+        example_hosts: {
+          gateway:     { addr4: [ gateway_net0_addr4, gateway_net32_addr4 ], addr6: [ ip4to6(gateway_net0_addr4), ip4to6(gateway_net32_addr4) ] },
+          servera:     { addr4: [ servera_net0_addr4  ],     addr6: [ ip4to6(servera_net0_addr4)  ] },
+          serverb:     { addr4: [ serverb_net32_addr4 ],     addr6: [ ip4to6(serverb_net32_addr4) ] },
+          serverc:     { addr4: [ serverc_net32_addr4 ],     addr6: [ ip4to6(serverc_net32_addr4) ] },
+          workstation: { addr4: [ workstation_net32_addr4 ], addr6: [ ip4to6(workstation_net32_addr4) ] }
+        }
+      }
+      ansible.groups = {
+        "all:children" => [ "servers", "workstations" ],
+        "servers" => [ "gateway", "servera", "serverb", "serverc" ],
+        "workstations" => [ "workstation" ]
+      }
+      ansible.vault_password_file = "./vault_password_file"
+    end
   end
 end
 
