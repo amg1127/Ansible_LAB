@@ -21,7 +21,7 @@
     - Restart DNS server
   - name: Write zone definition in /etc/named.conf
     blockinfile:
-      block: "{{ lookup('file', 'named.conf.snippet') | regex_replace('\\{\\{\\s*example_dns_name\\s*\\}\\}', example_dns_name) }}"
+      block: "{{ lookup('template', 'named.conf.snippet.j2') }}"
       insertafter: EOF
       path: /etc/named.conf
       validate: /usr/sbin/named-checkconf %s
@@ -29,7 +29,7 @@
     - Restart DNS server
   - name: Write example.com zone file into /var/named/example.com.db
     template:
-      src: example.com.db.j2
+      src: domainzone.db.j2
       dest: "/var/named/{{ example_dns_name }}.db"
       owner: root
       group: named
@@ -39,28 +39,28 @@
     - Restart DNS server
   - name: Write in-addr.arpa zone files into /var/named/*.rev4
     template:
-      src: "172.24.{{ item }}.rev4.j2"
-      dest: "/var/named/172.24.{{ item }}.rev4"
+      src: "net_{{ item.number }}.rev4.j2"
+      dest: "/var/named/{{ example_dns_name }}.{{ item.number }}.rev4"
       owner: root
       group: named
       mode: "0640"
-      validate: "/usr/sbin/named-checkzone '{{ item }}.24.172.in-addr.arpa.' %s"
+      validate: "/usr/sbin/named-checkzone '{{ item.zone }}' %s"
     with_items:
-      -  "0"
-      - "32"
+    - { number: "0",  zone: "{{ example_hosts['gateway']['addr4net0']  | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" }
+    - { number: "32", zone: "{{ example_hosts['gateway']['addr4net32'] | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" }
     notify:
     - Restart DNS server
   - name: Write ip6.arpa zone files into /var/named/*.rev6
     template:
-      src: "fc00.172.24.{{ item.number }}.rev6.j2"
-      dest: "/var/named/fc00.172.24.{{ item.number }}.rev6"
+      src: "net_{{ item.number }}.rev6.j2"
+      dest: "/var/named/{{ example_dns_name }}.{{ item.number }}.rev6"
       owner: root
       group: named
       mode: "0640"
-      validate: /usr/sbin/named-checkzone {{ item.subnet }}.0.0.4.2.0.0.2.7.1.0.0.0.f.c.ip6.arpa. %s
+      validate: "/usr/sbin/named-checkzone '{{ item.zone }}' %s"
     with_items:
-      - { subnet: "0.0", number:  "0" }
-      - { subnet: "2.3", number: "32" }
+    - { number: "0",  zone: "{{ example_hosts['gateway']['addr6net0']  | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" }
+    - { number: "32", zone: "{{ example_hosts['gateway']['addr6net32'] | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" }
     notify:
     - Restart DNS server
   - name: Open DNS ports in firewalld

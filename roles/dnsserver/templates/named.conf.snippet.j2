@@ -1,0 +1,26 @@
+
+zone "{{ example_dns_name }}." {
+    type master;
+    file "{{ example_dns_name }}.db";
+};
+
+zone "{{ example_hosts['gateway']['addr4net0'] | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" {
+    type master;
+    file "{{ example_dns_name }}.0.rev4";
+};
+
+zone "{{ example_hosts['gateway']['addr4net32'] | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" {
+    type master;
+    file "{{ example_dns_name }}.32.rev4";
+};
+
+zone "{{ example_hosts['gateway']['addr6net0'] | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" {
+    type master;
+    file "{{ example_dns_name }}.0.rev6";
+};
+
+zone "{{ example_hosts['gateway']['addr6net32'] | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" {
+    type master;
+    file "{{ example_dns_name }}.32.rev6";
+};
+

@@ -204,11 +204,11 @@ Vagrant.configure("2") do |config|
         example_dns_name: example_dns_name,
         example_ldap_name: example_ldap_name,
         example_hosts: {
-          gateway:     { addr4: [ gateway_net0_addr4, gateway_net32_addr4 ], addr6: [ ip4to6(gateway_net0_addr4), ip4to6(gateway_net32_addr4) ] },
-          servera:     { addr4: [ servera_net0_addr4  ],     addr6: [ ip4to6(servera_net0_addr4)  ] },
-          serverb:     { addr4: [ serverb_net32_addr4 ],     addr6: [ ip4to6(serverb_net32_addr4) ] },
-          serverc:     { addr4: [ serverc_net32_addr4 ],     addr6: [ ip4to6(serverc_net32_addr4) ] },
-          workstation: { addr4: [ workstation_net32_addr4 ], addr6: [ ip4to6(workstation_net32_addr4) ] }
+          gateway:     { addr4net0:  gateway_net0_addr4, addr4net32: gateway_net32_addr4, addr6net0: ip4to6(gateway_net0_addr4), addr6net32: ip4to6(gateway_net32_addr4) },
+          servera:     { addr4net0:  servera_net0_addr4,      addr6net0:  ip4to6(servera_net0_addr4)      },
+          serverb:     { addr4net32: serverb_net32_addr4,     addr6net32: ip4to6(serverb_net32_addr4)     },
+          serverc:     { addr4net32: serverc_net32_addr4,     addr6net32: ip4to6(serverc_net32_addr4)     },
+          workstation: { addr4net32: workstation_net32_addr4, addr6net32: ip4to6(workstation_net32_addr4) }
         }
       }
       ansible.groups = {
