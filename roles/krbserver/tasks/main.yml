@@ -330,7 +330,7 @@
   - name: Create kerberos principal for OpenLDAP service
     include_tasks: addkrbservice.yml
     with_items:
-      - { host: "{{ inventory_hostname }}", service: 'ldap', keytabfile: "{{ krb5slapdkeytabfile }}", keytabowner: 'ldap', keytabgroup: 'ldap' }
+    - { host: "{{ inventory_hostname }}", service: 'ldap', keytabfile: "{{ krb5slapdkeytabfile }}", keytabowner: 'ldap', keytabgroup: 'ldap' }
 # https://github.com/ansible/ansible/issues/19765
 #    notify:
 #    - Restart OpenLDAP service

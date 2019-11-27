@@ -1,0 +1,35 @@
+---
+- name: Write DNS zone records
+  block:
+  - name: Write A and AAAA resource records
+    lineinfile:
+      path: "{{ named_rootdir }}/{{ example_dns_name }}.db"
+      line: "{{ rrname }} {{ item.value }} {{ example_hosts[rrname][item.key] }}"
+      insertafter: EOF
+    with_dict: "{{ dnsrrkeys }}"
+    when: example_hosts[rrname][item.key] is defined
+  - name: Write PTR resource records for IPv4 addresses
+    lineinfile:
+      path: "{{ named_rootdir }}/{{ example_dns_name }}.{{ item.key | regex_replace('^addr([0-9]+)net([0-9]+)$', '\\2.rev\\1') }}"
+      line: "{{ example_hosts[rrname][item.key] | ipaddr('revdns') | regex_replace('^([0-9]+)\\..*$', '\\1') }} PTR {{ rrname }}.{{ example_dns_name }}."
+      insertafter: EOF
+    with_dict: "{{ dnsrrkeys }}"
+    when:
+    - example_hosts[rrname][item.key] is defined
+    - item.value == "A"
+  - name: Write PTR resource records for IPv6 addresses
+    lineinfile:
+      path: "{{ named_rootdir }}/{{ example_dns_name }}.{{ item.key | regex_replace('^addr([0-9]+)net([0-9]+)$', '\\2.rev\\1') }}"
+      line: "{{ example_hosts[rrname][item.key] | ipaddr('revdns') | regex_replace('^(([0-9a-fA-F]+\\.){15,15}[0-9a-fA-F])\\..*$', '\\1') }} PTR {{ rrname }}.{{ example_dns_name }}."
+      insertafter: EOF
+    with_dict: "{{ dnsrrkeys }}"
+    when:
+    - example_hosts[rrname][item.key] is defined
+    - item.value == "AAAA"
+  vars:
+    dnsrrkeys:
+      addr4net0: "A"
+      addr4net32: "A"
+      addr6net0: "AAAA"
+      addr6net32: "AAAA"
+

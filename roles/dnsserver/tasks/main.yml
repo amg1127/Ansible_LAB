@@ -1,8 +1,4 @@
 ---
-# TODO: IP addresses are hardcoded. Must get the correct data from variables defined by Vagrant
-- name: REMIND
-  debug:
-    msg: "IP addresses are hardcoded. Must get the correct data from variables defined by Vagrant"
 - name: DNS server installation and configuration
   block:
   - name: Install DNS Server
@@ -27,42 +23,42 @@
       validate: /usr/sbin/named-checkconf %s
     notify:
     - Restart DNS server
-  - name: Write example.com zone file into /var/named/example.com.db
+  - name: Write initial example.com zone file into /var/named/example.com.db
     template:
       src: domainzone.db.j2
-      dest: "/var/named/{{ example_dns_name }}.db"
+      dest: "{{ named_rootdir }}/{{ example_dns_name }}.db"
       owner: root
       group: named
       mode: "0640"
-      validate: "/usr/sbin/named-checkzone '{{ example_dns_name }}.' %s"
     notify:
     - Restart DNS server
-  - name: Write in-addr.arpa zone files into /var/named/*.rev4
+  - name: Write initials in-addr.arpa and ip6.arpa zone files into /var/named/*.rev*
     template:
-      src: "net_{{ item.number }}.rev4.j2"
-      dest: "/var/named/{{ example_dns_name }}.{{ item.number }}.rev4"
+      src: "net_{{ item.subnet }}.rev{{ item.l3proto }}.j2"
+      dest: "{{ named_rootdir }}/{{ example_dns_name }}.{{ item.subnet }}.rev{{ item.l3proto }}"
       owner: root
       group: named
       mode: "0640"
-      validate: "/usr/sbin/named-checkzone '{{ item.zone }}' %s"
     with_items:
-    - { number: "0",  zone: "{{ example_hosts['gateway']['addr4net0']  | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" }
-    - { number: "32", zone: "{{ example_hosts['gateway']['addr4net32'] | ipaddr('revdns') | regex_replace('^[0-9]+\\.', '') }}" }
+    - { subnet: "0",  l3proto: "4" }
+    - { subnet: "0",  l3proto: "6" }
+    - { subnet: "32", l3proto: "4" }
+    - { subnet: "32", l3proto: "6" }
     notify:
     - Restart DNS server
-  - name: Write ip6.arpa zone files into /var/named/*.rev6
-    template:
-      src: "net_{{ item.number }}.rev6.j2"
-      dest: "/var/named/{{ example_dns_name }}.{{ item.number }}.rev6"
-      owner: root
-      group: named
-      mode: "0640"
-      validate: "/usr/sbin/named-checkzone '{{ item.zone }}' %s"
+  - name: Write DNS zone files
+    include_tasks: adddnsrecords.yml
     with_items:
-    - { number: "0",  zone: "{{ example_hosts['gateway']['addr6net0']  | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" }
-    - { number: "32", zone: "{{ example_hosts['gateway']['addr6net32'] | ipaddr('revdns') | regex_replace('^([0-9a-fA-F]\\.){16,16}', '') }}" }
-    notify:
-    - Restart DNS server
+    - gateway
+    - servera
+    - serverb
+    - serverc
+    - workstation
+    loop_control:
+      loop_var: rrname
+# https://github.com/ansible/ansible/issues/19765
+#    notify:
+#    - Restart DNS server
   - name: Open DNS ports in firewalld
     firewalld:
       permanent: yes

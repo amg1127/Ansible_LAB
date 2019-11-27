@@ -1,7 +1,7 @@
 ---
 - name: LDAP server installation and configuration
   block:
-  - name: Assign interfaces to firewall zones
+  - name: Assign firewall zones to network interfaces
     firewalld:
       interface: "{{ item.iface }}"
       zone: "{{ item.zone }}"

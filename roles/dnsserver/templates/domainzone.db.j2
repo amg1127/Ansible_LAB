@@ -3,9 +3,6 @@ $TTL 1m
 @ SOA servera.{{ example_dns_name }}. root.servera.{{ example_dns_name }}. ( 2019083000 1h 10m 1w 10m )
 @ NS servera.{{ example_dns_name }}.
 
-servera A 172.24.0.2
-servera AAAA fc00:172:24:0::2
-
 ; DNS records for kerberos
 ldap                  CNAME servera
 _ldap._tcp            SRV 0 0 389 ldap
@@ -17,16 +14,4 @@ _kerberos-master._udp SRV 0 0 88 kerberos
 _kerberos-adm._tcp    SRV 0 0 749 kerberos
 _kpasswd._udp         SRV 0 0 464 kerberos
 
-gateway A 172.24.0.1
-gateway A 172.24.32.1
-gateway AAAA fc00:172:24:0::1
-gateway AAAA fc00:172:24:32::1
 
-serverb A 172.24.32.3
-serverb AAAA fc00:172:24:32::3
-
-serverc A 172.24.32.4
-serverc AAAA fc00:172:24:32::4
-
-workstation A 172.24.32.48
-workstation AAAA fc00:172:24:32::48
