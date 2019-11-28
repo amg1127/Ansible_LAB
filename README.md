@@ -1,8 +1,8 @@
 # Ansible_LAB
 
-This project consists in a Vagrant + Ansible project that deploys a centralized authentication system based on OpenLDAP + MIT Kerberos. I developed it with the purpose of learning Ansible and prepare myself for the Red Hat EX294 exam.
+This project consists in a Vagrant + Ansible project that deploys a centralized authentication system based on OpenLDAP + MIT Kerberos. I developed it with the purpose of learning Ansible and preparing myself for the Red Hat EX294 exam.
 
-The virtual machines can be launched using the following steps:
+The virtual machines can be launched with the following steps:
 
 * Install Ansible, Vagrant and VirtualBox on the control machine.
 * Have a CentOS 7 DVD ISO image downloaded at the path `${HOME}/Downloads/CentOS-7-x86_64.iso` (`$ wget --continue --timeout=30 --tries=0 -O ~/Downloads/CentOS-7-x86_64.iso http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Everything-1908.iso`).
