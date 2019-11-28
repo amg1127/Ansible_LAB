@@ -5,6 +5,12 @@
     - /usr/bin/localectl
     - set-keymap
     - us-acentos
+# https://access.redhat.com/solutions/1434943
+- name: Increase maximum number of processes
+  sysctl:
+    name: "kernel.pid_max"
+    value: "131072"
+    sysctl_file: "/etc/sysctl.d/{{ example_dns_name }}.conf"
 - name: Create CDROM mount point
   file:
     path: "{{ CDROMISOMountPoint }}"

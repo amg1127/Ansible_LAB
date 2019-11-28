@@ -7,7 +7,7 @@ The virtual machines can be launched using the following steps:
 * Install Ansible, Vagrant and VirtualBox on the control machine.
 * Have a CentOS 7 DVD ISO image downloaded at the path `${HOME}/Downloads/CentOS-7-x86_64.iso` (`$ wget --continue --timeout=30 --tries=0 -O ~/Downloads/CentOS-7-x86_64.iso http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Everything-1908.iso`).
 * Clone this repository.
-* Run `vagrant up` command from the local repository copy.
+* Run `vagrant up --provision` command from the local repository copy.
 
 Network users created by playbook are named using [NATO phonetic alphabet](https://en.wikipedia.org/wiki/NATO_phonetic_alphabet). Their passwords are `student`.
 

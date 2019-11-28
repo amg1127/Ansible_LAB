@@ -1,6 +1,14 @@
 ---
 - name: LDAP server installation and configuration
   block:
+  - name: Enable IP packet forwarding among network interfaces
+    sysctl:
+      name: "{{ item }}"
+      value: "1"
+      sysctl_file: "/etc/sysctl.d/{{ example_dns_name }}.conf"
+    with_items:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
   - name: Assign firewall zones to network interfaces
     firewalld:
       interface: "{{ item.iface }}"
