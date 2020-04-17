@@ -5,7 +5,7 @@ This project consists in a Vagrant + Ansible project that deploys a centralized 
 The virtual machines can be launched with the following steps:
 
 * Install Ansible, Vagrant and VirtualBox on the control machine.
-* Have a CentOS 7 DVD ISO image downloaded at the path `${HOME}/Downloads/CentOS-7-x86_64.iso` (`$ wget --continue --timeout=30 --tries=0 -O ~/Downloads/CentOS-7-x86_64.iso http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Everything-1908.iso`).
+* Have a CentOS 7 DVD ISO image downloaded at the path `${HOME}/Downloads/CentOS-7-x86_64.iso` (`$ curl --continue-at - --max-time 30 --retry 10 --location --output ~/Downloads/CentOS-7-x86_64.iso http://isoredirect.centos.org/centos/7/isos/x86_64/CentOS-7-x86_64-Everything-1908.iso`).
 * Clone this repository.
 * Run `vagrant up --provision` command from the local repository copy.
 
