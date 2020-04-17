@@ -62,7 +62,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider :virtualbox do |v|
     v.gui = true
     v.linked_clone = true
-    v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "2048", "--vram", "16", "--boot1", "disk"]
+    v.customize ["modifyvm", :id, "--cpus", "2", "--memory", "1024", "--vram", "16", "--boot1", "disk"]
     v.customize ["storagectl", :id, "--name", centos_box_sata_ctrl, "--hostiocache", "on"]
     v.customize ["storagectl", :id, "--name", centos_box_ide_ctrl, "--hostiocache", "on"]
     v.customize ["storageattach", :id, "--storagectl", centos_box_ide_ctrl, "--port", "0", "--device", "1", "--type", "dvddrive", "--medium", ENV['HOME'] + "/Downloads/CentOS-" + centos_dist_version + "-x86_64.iso"]
