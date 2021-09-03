@@ -1,7 +1,7 @@
 ---
 - name: Install Kerberos and LDAP authentication packages
   yum:
-    name: "authconfig,pam_krb5,sssd-client,sssd-krb5,sssd-ldap"
+    name: "authconfig,sssd-client,sssd-krb5,sssd-ldap"
     state: present
 # https://docs.pagure.org/SSSD.sssd/users/ldap_with_ad.html
 - name: Deploy SSSD configuration file
@@ -31,6 +31,49 @@
     regexp: '^[#\s]*GSSAPIDelegateCredentials\s*'
     line: '    GSSAPIDelegateCredentials yes'
     insertafter: '^Host\s+\*\s*$'
+- name: Reenable stock YUM repositories
+  ini_file:
+    dest: "/etc/yum.repos.d/CentOS-{{ item.file }}.repo"
+    section: "{{ item.section }}"
+    option: enabled
+    value: "1"
+    create: no
+    no_extra_spaces: yes
+  ignore_errors: yes
+  with_items:
+  - file: Stream-BaseOS
+    section: baseos
+  - file: Stream-Extras
+    section: extras
+  - file: Stream-AppStream
+    section: appstream
+  - file: Base
+    section: base
+  - file: Base
+    section: updates
+  - file: Base
+    section: extras
+  - file: Base
+    section: centosplus
+- name: Install yum-utils or dnf-utils
+  package:
+    name: "{{ ansible_pkg_mgr }}-utils"
+    state: installed
+- name: Upgrade all packages
+  package:
+    name: '*'
+    state: latest
+- name: Verify whether reboot is required
+  command:
+    argv:
+      - 'needs-restarting'
+      - '--reboothint'
+  register: is_reboot_required
+  failed_when: 'is_reboot_required.rc != 0 and is_reboot_required.rc != 1'
+  changed_when: 'is_reboot_required.rc != 0'
+- name: Reboot the server
+  reboot:
+  when: 'is_reboot_required is changed'
 # This should be the last task
 - name: Update MAN database
   command:
@@ -38,4 +81,4 @@
   register: mandbcron_output
   changed_when: false
   failed_when: mandbcron_output.rc != 0
-
+  ignore_errors: yes

@@ -25,23 +25,44 @@
     boot: yes
 - name: Disable stock YUM repositories
   ini_file:
-    dest: /etc/yum.repos.d/CentOS-Base.repo
-    section: "{{ item }}"
+    dest: "/etc/yum.repos.d/CentOS-{{ item.file }}.repo"
+    section: "{{ item.section }}"
     option: enabled
     value: "0"
+    create: no
     no_extra_spaces: yes
+  ignore_errors: yes
   with_items:
-  - base
-  - updates
-  - extras
-  - centosplus
+  - file: Stream-BaseOS
+    section: baseos
+  - file: Stream-Extras
+    section: extras
+  - file: Stream-AppStream
+    section: appstream
+  - file: Base
+    section: base
+  - file: Base
+    section: updates
+  - file: Base
+    section: extras
+  - file: Base
+    section: centosplus
 - name: Enable local YUM repository
   ini_file:
-    dest: /etc/yum.repos.d/CentOS-Media.repo
-    section: "c7-media"
+    dest: /etc/yum.repos.d/CentOS-{{ item.file }}.repo
+    section: "{{ item.section }}"
     option: enabled
     value: "1"
+    create: no
     no_extra_spaces: yes
+  ignore_errors: yes
+  with_items:
+  - file: Stream-Media
+    section: media-baseos
+  - file: Stream-Media
+    section: media-appstream
+  - file: Media
+    section: c7-media
 - name: Install Kerberos client packages
   yum:
     name: "krb5-workstation"

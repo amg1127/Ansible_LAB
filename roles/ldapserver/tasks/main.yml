@@ -43,15 +43,13 @@
   - name: Configure certificates for LDAPS service
     block:
     - name: Try to configure certificates for LDAPS service using Ansible ldap_attr module
-      ldap_attr:
+      ldap_attrs:
         dn: "cn=config"
-        name: "{{ item.key }}"
-        values: "{{ item.value }}"
+        attributes:
+          olcTLSCACertificateFile: "{{ certauthorityTrustedCARoot }}/{{ example_dns_name }}_CA.crt"
+          olcTLSCertificateKeyFile: "{{ LDAPTLSKeyFile }}"
+          olcTLSCertificateFile: "{{ LDAPTLSCertificateFile }}"
         state: present
-      with_dict:
-        olcTLSCACertificateFile: "{{ certauthorityTrustedCARoot }}/{{ example_dns_name }}_CA.crt"
-        olcTLSCertificateKeyFile: "{{ LDAPTLSKeyFile }}"
-        olcTLSCertificateFile: "{{ LDAPTLSCertificateFile }}"
       notify: Restart OpenLDAP service
     rescue:
     - name: Configure certificates for LDAPS service using Ansible command module
@@ -103,36 +101,34 @@
       - cosine
       - nis
   - name: Modify default root OpenLDAP database
-    ldap_attr:
+    ldap_attrs:
       dn: olcDatabase={2}hdb,cn=config
-      name: "{{ item.key }}"
-      values: "{{ item.value }}"
-      state: exact
-    with_dict:
-      olcSuffix: "{{ example_ldap_name }}"
-      olcRootDN: "gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+      attributes:
+        olcSuffix: "{{ example_ldap_name }}"
+        olcRootDN: "gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
 # https://stackoverflow.com/questions/3790454/how-do-i-break-a-string-over-multiple-lines
-      olcAccess:
-        - >-
-          {0}to attrs=userPassword
-          by self write
-          by anonymous auth
-          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
-          by * none
-        - >-
-          {1}to attrs=shadowLastChange
-          by self write
-          by anonymous auth
-          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
-          by * read
-        - >-
-          {2}to dn.subtree="{{ example_ldap_name }}"
-          by anonymous auth
-          by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
-          by * read
-        - >-
-          {3}to *
-          by * read
+        olcAccess:
+          - >-
+            {0}to attrs=userPassword
+            by self write
+            by anonymous auth
+            by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+            by * none
+          - >-
+            {1}to attrs=shadowLastChange
+            by self write
+            by anonymous auth
+            by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+            by * read
+          - >-
+            {2}to dn.subtree="{{ example_ldap_name }}"
+            by anonymous auth
+            by dn.exact="cn={{ LDAPAdminUserName }},{{ example_ldap_name }}" write
+            by * read
+          - >-
+            {3}to *
+            by * read
+      state: exact
   - name: Create root container
     ldap_entry:
       dn: "{{ example_ldap_name }}"
@@ -189,12 +185,12 @@
       - "{{ NATOalphabet }}"
     no_log: yes
   - name: Configure identity mapping for EXTERNAL SASL mechanism
-    ldap_attr:
+    ldap_attrs:
       dn: "cn=config"
-      name: olcAuthzRegexp
-      values: >-
-        {0}gidNumber=[0-9]+\+uidNumber=([0-9]+),cn=peercred,cn=external,cn=auth
-        ldap:///{{ LDAPUsersContainer }},{{ example_ldap_name }}??sub?(&(objectClass=posixAccount)(uidNumber=$1))
+      attributes:
+        olcAuthzRegexp: >-
+          {0}gidNumber=[0-9]+\+uidNumber=([0-9]+),cn=peercred,cn=external,cn=auth
+          ldap:///{{ LDAPUsersContainer }},{{ example_ldap_name }}??sub?(&(objectClass=posixAccount)(uidNumber=$1))
       state: present
   tags: ldapsetup
 

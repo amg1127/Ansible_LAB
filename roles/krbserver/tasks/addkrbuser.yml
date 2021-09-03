@@ -10,7 +10,7 @@
       ldapdn="${2}";
       if /usr/sbin/kadmin.local getprinc "${principal}" > /dev/null; then
         echo "PRINCIPAL ALREADY EXISTS";
-      elif /usr/sbin/kadmin.local addprinc -x "dn=${ldapdn}" "${principal}"; then
+      elif /usr/sbin/kadmin.local addprinc +allow_renewable -x "dn=${ldapdn}" "${principal}"; then
         echo "PRINCIPAL HAS BEEN CREATED SUCCESSFULLY";
       else
         exit 1;

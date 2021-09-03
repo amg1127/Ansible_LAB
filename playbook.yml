@@ -7,6 +7,11 @@
   - name: Wait for all hosts to respond
     wait_for_connection:
       timeout: 300
+  - name: Ensure that firewalld is enabled and started
+    service:
+      name: firewalld.service
+      state: started
+      enabled: yes
 
 - hosts: gateway
   become: yes
@@ -42,7 +47,6 @@
 - hosts: all
   become: yes
   become_user: root
-  strategy: free
   roles:
     - common-step2
 

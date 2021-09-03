@@ -1,7 +1,7 @@
 ---
 - name: Install GUI environment
   yum:
-    name: "@^graphical-server-environment,@^gnome-desktop-environment,@graphical-admin-tools"
+    name: "@graphical-server-environment,@gnome-desktop,@gnome-apps,@graphical-admin-tools"
     state: present
   notify:
   - Restart workstations

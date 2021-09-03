@@ -50,7 +50,7 @@
       csr_path: "{{ certauthorityCSRPath }}"
       privatekey_path: "{{ certauthorityPrivateKeyPath }}"
       privatekey_passphrase: "{{ certauthorityPrivateKeyPassword }}"
-      selfsigned_not_before: 20190818172000Z 
+      selfsigned_not_before: 20190818172000Z
       selfsigned_not_after: 20380119031408Z
       selfsigned_digest: sha512
       state: present
